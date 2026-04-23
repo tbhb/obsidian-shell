@@ -8,12 +8,16 @@ release-please handles version bumps, the changelog, and release creation. Human
 [brat]: https://tfthacker.com/brat-developers
 [obsidian-community]: https://obsidian.md/plugins
 
-## Channels
+## Single-branch prerelease flow
 
-- **Stable channel.** Push [conventional commits][conventional-commits] to `main`. release-please opens a release PR that bumps `package.json` and `manifest.json`, appends an entry to `versions.json` keyed on the new version with `manifest.json`'s current `minAppVersion` as the value, and updates `CHANGELOG.md`. Merging the PR creates a bare-semver tag like `1.2.0`, with no `v` prefix per Obsidian's convention, and a GitHub release. A follow-up job then runs `pnpm build` on the tag, generates a [SLSA provenance][slsa] attestation via sigstore, and uploads the release assets.
-- **Beta channel.** Push to the `beta` branch. Same flow, driven by `.github/release-please-config.beta.json` with `"versioning": "prerelease"` and `"prerelease-type": "beta"`. That produces tags like `1.2.0-beta.1` and marks the GitHub release as a pre-release. Beta assets install the same way as stable, by hand from the pre-release page.
+Push [conventional commits][conventional-commits] to `main`. release-please opens a release PR. The PR updates `package.json`, `manifest.json`, `versions.json`, and `CHANGELOG.md`. The new `versions.json` key maps the version to the current `minAppVersion`. Merging the PR creates a bare-semver tag, with no `v` prefix per Obsidian's convention, and a GitHub release. A follow-up job runs `pnpm build` on the tag, generates a [SLSA provenance][slsa] attestation via sigstore, and uploads the release assets.
 
-Only `feat:`, `fix:`, and commits with breaking changes trigger a release PR. `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:`, and `build:` commits land without opening one.
+### Stable vs beta
+
+- **Stable release.** A normal `feat` or `fix` bump produces a tag like `1.2.0`. The GitHub release stays unmarked. Users pulling via the community catalog or via manual install see this release as the latest.
+- **Beta release.** Add a `Release-As: 1.2.0-beta.1` footer to a qualifying commit. release-please cuts a release at that exact version. GitHub flags the release as prerelease automatically because the version carries a prerelease qualifier. BRAT's beta-tester flow honors that flag, so opted-in users get the beta without any branch-level distinction.
+
+Only `feat:`, `fix:`, and commits with breaking changes trigger a release PR on their own. `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:`, and `build:` commits land without opening one, unless they carry a `Release-As:` footer.
 
 [conventional-commits]: https://www.conventionalcommits.org/
 [slsa]: https://slsa.dev/

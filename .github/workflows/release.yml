@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - beta
 
 permissions:
   contents: write
@@ -23,7 +22,7 @@ env:
 
 jobs:
   release-please:
-    name: release-please (${{ github.ref_name }})
+    name: release-please
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -34,11 +33,8 @@ jobs:
         id: release
         uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38  # v4.4.0
         with:
-          target-branch: ${{ github.ref_name }}
-          config-file: >-
-            ${{ github.ref_name == 'beta'
-            && '.github/release-please-config.beta.json'
-            || '.github/release-please-config.json' }}
+          target-branch: main
+          config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
 
       # release-please can update values in manifest.json via `extra-files`,

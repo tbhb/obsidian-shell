@@ -53,7 +53,6 @@ test/
 ├── workflows/ci.yml        # Lint, Build, Test, Documentation jobs
 ├── workflows/release.yml   # release-please + build + attest + upload
 ├── release-please-config.json
-├── release-please-config.beta.json
 ├── release-please-manifest.json
 └── dependabot.yml
 manifest.json               # Obsidian plugin manifest
@@ -135,10 +134,10 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 
 ## Release process
 
-- [release-please][release-please] handles versioning, tagging, and release creation. Configs live under `.github/`. See `RELEASING.md` for the full guide.
-- Stable channel: push conventional commits to `main`. release-please opens a release PR that bumps `package.json` and `manifest.json`, appends to `versions.json`, and updates `CHANGELOG.md`. Merging creates a bare-semver tag like `1.2.0`, with no `v` prefix per Obsidian's convention, and a GitHub release. A follow-up job builds, attests via [SLSA provenance][slsa], then uploads the assets.
-- Beta channel: push to the `beta` branch. Same flow, but driven by `.github/release-please-config.beta.json`. Produces `1.2.0-beta.1`-style tags marked as pre-releases.
-- Only `feat:`, `fix:`, and commits with breaking changes trigger a release PR. `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:`, and `build:` commits land without opening one.
+- [release-please][release-please] runs in single-branch mode on `main`. Configs live under `.github/`. See `RELEASING.md` for the full guide.
+- Push conventional commits to `main`. release-please opens a release PR that bumps `package.json` and `manifest.json`, appends to `versions.json`, and updates `CHANGELOG.md`. Merging creates a bare-semver tag, with no `v` prefix per Obsidian's convention, and a GitHub release. A follow-up job builds, attests via [SLSA provenance][slsa], then uploads the assets.
+- Stable vs beta comes from the version string, not the branch. A regular `feat` or `fix` bumps under `bump-minor-pre-major` and ships as a non-prerelease. A `Release-As: x.y.z-beta.N` footer on any commit forces a prerelease; release-please flags the GitHub release as prerelease automatically. BRAT's beta channel honors that flag, so opted-in users see the beta without any branch distinction.
+- Only `feat:`, `fix:`, and commits with breaking changes trigger a release PR on their own. `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:`, and `build:` commits land without opening one, unless they carry a `Release-As:` footer.
 - Release assets ship as flat files: `main.js`, `manifest.json`, `styles.css`, a `pty-<platform>-<arch>.node` per supported platform, `spawn-helper-<platform>-<arch>` on macOS, and `conpty-win32-x64.node` plus `conpty_console_list-win32-x64.node` on Windows. node-pty's bundled loader picks the native matching `process.platform + '-' + process.arch` at runtime.
 - Users install by hand from the GitHub release. Obsidian's community catalog and BRAT only deliver the three-file JS layer, so neither can carry the per-platform natives until a distribution fix lands.
 - Don't hand-edit `manifest.json` `version`, `package.json` `version`, `versions.json`, or `CHANGELOG.md`. Don't create tags manually. release-please owns those files.
@@ -169,7 +168,7 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 - Write reference-style markdown links with definitions at the bottom of the paragraph.
 - Avoid em-dashes, passive voice, and italicized copulas in prose.
 - Keep paragraphs on one line. No hard wrap.
-- Don't force-push to `main` or `beta`.
+- Don't force-push to `main`.
 - Don't bypass hooks.
 - Don't hand-edit release-managed files.
 
