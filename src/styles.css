@@ -31,7 +31,14 @@
     flex-direction: column;
     box-sizing: border-box;
     height: 100%;
-    padding: var(--size-4-2);
+    /*
+     * Obsidian's app status bar is a position: absolute overlay pinned to
+     * the bottom-right of the window, so any leaf content rendered edge-to-
+     * edge (like a terminal's last row) ends up hidden under it. Reserve a
+     * ~28px strip along the bottom so tmux-style status lines and prompts
+     * stay visible.
+     */
+    padding: var(--size-4-2) var(--size-4-2) calc(var(--size-4-2) + 28px);
     background: var(--background-primary);
     overflow: hidden;
   }
