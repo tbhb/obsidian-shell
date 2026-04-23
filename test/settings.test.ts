@@ -17,6 +17,22 @@ import {
   ShellSettingTab,
 } from '../src/settings';
 
+vi.mock('../src/pty', () => {
+  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
+    this.isDead = false;
+    this.kill = vi.fn();
+    this.resize = vi.fn();
+    this.attach = vi.fn();
+    this.detach = vi.fn();
+    this.write = vi.fn();
+    this.onExit = vi.fn();
+  });
+  return {
+    probePty: vi.fn(),
+    PtySession: ctor,
+  };
+});
+
 vi.mock('../src/view', () => ({
   SHELL_VIEW_TYPE: 'obsidian-shell',
   ShellView: class {

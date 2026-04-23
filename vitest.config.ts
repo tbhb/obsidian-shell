@@ -12,11 +12,10 @@ export default defineConfig({
       reporter: ['text', 'text-summary', 'html', 'json'],
       reportsDirectory: './coverage',
       include: ['src/**/*.ts'],
-      // src/pty.ts loads node-pty via Electron's window.require against a
-      // compiled native binary. src/view.ts embeds xterm.js, which needs a
-      // real canvas/WebGL renderer. Neither is reachable from jsdom, so
-      // both modules are validated end-to-end inside Obsidian, not in
-      // vitest.
+      // src/pty.ts bundles node-pty and loads a compiled native binary at
+      // runtime. src/view.ts embeds xterm.js, which needs a real canvas or
+      // WebGL renderer. Neither is reachable from jsdom, so both modules
+      // are validated end-to-end inside Obsidian, not in vitest.
       exclude: ['src/**/*.d.ts', 'src/pty.ts', 'src/view.ts', 'test/**', '**/__mocks__/**'],
       // The scaffold ships at 100% across all metrics. Keep it that way —
       // any regression in branches/lines/functions/statements fails CI.
