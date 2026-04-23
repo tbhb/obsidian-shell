@@ -1,11 +1,20 @@
 import process from 'node:process';
 import * as nodePty from 'node-pty';
+import { __obsidianShellSetNativeDir as setNativePtyDir } from 'node-pty/lib/utils';
 import type { FileSystemAdapter, Plugin } from 'obsidian';
 
-// node-pty is bundled into main.js via Vite, with its loadNativeModule helper
-// patched (see vite.config.ts) to resolve a flat <name>-<platform>-<arch>.node
-// sibling of main.js in the released plugin, or to fall back to
-// node_modules/node-pty/build/Release/ during local development.
+// node-pty's wrapper lives in main.js (Vite bundles it). Its module-level code
+// path that resolves the native binary is deferred by the build-time patches
+// in vite.config.ts, so we can hand in the plugin folder at runtime before the
+// first spawn/open call. Everything below routes through initNative(plugin).
+
+let nativeInitialized = false;
+
+function initNative(plugin: Plugin): void {
+  if (nativeInitialized) return;
+  setNativePtyDir(getPluginDir(plugin));
+  nativeInitialized = true;
+}
 
 function getPluginDir(plugin: Plugin): string {
   const adapter = plugin.app.vault.adapter as FileSystemAdapter;
@@ -48,6 +57,7 @@ export class PtySession {
   private exitHandler: (() => void) | null = null;
 
   constructor(plugin: Plugin, options: PtySessionOptions = {}) {
+    initNative(plugin);
     const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
     // Spawn as a login shell so /etc/zprofile (or /etc/profile for bash) runs
     // path_helper on macOS and adds /opt/homebrew/bin, /usr/local/bin, etc.
@@ -118,6 +128,7 @@ export class PtySession {
 }
 
 export async function probePty(plugin: Plugin): Promise<string> {
+  initNative(plugin);
   return new Promise<string>((resolve, reject) => {
     const proc = nodePty.spawn('/usr/bin/uname', ['-a'], {
       name: 'xterm-color',
