@@ -16,8 +16,8 @@ concurrency:
 
 env:
   # Opt JS-based actions into the Node 24 runtime early (the default flip
-  # happens 2026-06-02). Silences deprecation warnings on older actions
-  # like googleapis/release-please-action@v4.4.0 which still target Node 20.
+  # happens 2026-06-02). Silences deprecation warnings on any transitive
+  # action that still targets Node 20.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Run release-please
         id: release
-        uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38  # v4.4.0
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         with:
           target-branch: main
           config-file: .github/release-please-config.json
