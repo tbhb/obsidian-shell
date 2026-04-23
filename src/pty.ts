@@ -41,6 +41,7 @@ export function loadNodePty(plugin: Plugin): typeof NodePty {
 
 export interface PtySessionOptions {
   shell?: string;
+  shellArgs?: string[];
   cwd?: string;
   env?: { [key: string]: string };
   cols?: number;
@@ -53,8 +54,13 @@ export class PtySession {
   constructor(plugin: Plugin, options: PtySessionOptions = {}) {
     const pty = loadNodePty(plugin);
     const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
+    // Spawn as a login shell so /etc/zprofile (or /etc/profile for bash) runs
+    // path_helper on macOS and adds /opt/homebrew/bin, /usr/local/bin, etc.
+    // Obsidian's renderer inherits a minimal PATH; without -l the user's
+    // .zshrc fails to locate tools like mise and starship.
+    const shellArgs = options.shellArgs ?? ['-l'];
     const cwd = options.cwd ?? getVaultPath(plugin);
-    this.proc = pty.spawn(shell, [], {
+    this.proc = pty.spawn(shell, shellArgs, {
       name: 'xterm-256color',
       cols: options.cols ?? 80,
       rows: options.rows ?? 24,
