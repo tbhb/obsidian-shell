@@ -52,6 +52,58 @@ pnpm vale:sync
 
 That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/obsidian-shell/` and the vocabulary under `.vale/config/vocabularies/obsidian-shell/` stay committed.
 
+## Scripts
+
+Every pnpm script in one place:
+
+```bash
+pnpm dev              # vite build --watch
+pnpm build            # tsc --noEmit + vite build
+pnpm rebuild:native   # compile node-pty against Electron 39 headers
+pnpm test             # vitest run
+pnpm test:watch       # vitest in watch mode
+pnpm test:coverage    # vitest run --coverage, enforces 100% thresholds
+pnpm typecheck        # tsc on src and test tsconfigs
+pnpm format           # biome format --write
+pnpm format:markdown  # rumdl fmt .
+pnpm lint             # biome lint + eslint
+pnpm lint:markdown    # rumdl check
+pnpm lint:prose       # vale
+pnpm lint:spelling    # cspell
+pnpm lint:yaml        # yamllint --strict
+pnpm lint:actions     # actionlint
+pnpm lint:all         # every lint above, one command
+pnpm vale:sync        # download vale style packages
+```
+
+## Repository layout
+
+```text
+obsidian-shell/
+├── manifest.json            # Obsidian plugin manifest
+├── versions.json            # version -> minAppVersion map
+├── vite.config.ts           # Vite 8 / Rolldown library-mode config
+├── vitest.config.ts         # Vitest config, aliases `obsidian` to a stub
+├── tsconfig.json            # strict TS, ES2022, bundler resolution
+├── biome.json               # Biome lint + format config
+├── eslint.config.mts        # ESLint flat config, only eslint-plugin-obsidianmd
+├── src/
+│   ├── main.ts              # plugin entry, commands, ribbon, event bus
+│   ├── pty.ts               # node-pty loader + PtySession wrapper + self-test
+│   ├── view.ts              # ShellView, an ItemView hosting xterm.js
+│   ├── sidebar.ts           # ShellsView, the left-sidebar list
+│   ├── picker.ts            # Switch shell FuzzySuggestModal
+│   ├── settings.ts          # settings schema + mergeSettings + tab
+│   └── styles.css           # Tailwind entry + @theme inline block
+└── test/
+    ├── __mocks__/obsidian.ts  # runtime stub of the obsidian module
+    ├── setup.ts               # DOM helper polyfills
+    ├── main.test.ts
+    ├── settings.test.ts
+    ├── sidebar.test.ts
+    └── picker.test.ts
+```
+
 ## Development loop
 
 Run the Vite watcher in one terminal:
@@ -89,6 +141,13 @@ What you can exercise from there:
 Edits to `src/` rebuild automatically. Hot Reload re-enables the plugin when the new files land.
 
 ## Linting
+
+TypeScript files run through two linters because they cover different ground. [Biome][biome] handles general linting, formatting, and import sorting with a single binary and zero config. [ESLint][eslint] runs [`eslint-plugin-obsidianmd`][obsidianmd-eslint] for Obsidian [submission requirements][obsidian-submission] like sentence-case UI strings, no `innerHTML`, and no `TFile` casts, which Biome can't cover.
+
+[biome]: https://biomejs.dev/
+[eslint]: https://eslint.org/
+[obsidianmd-eslint]: https://github.com/obsidianmd/eslint-plugin
+[obsidian-submission]: https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins
 
 The scaffold uses one linter per domain. Nothing overlaps, so each tool has a clear job:
 
@@ -162,6 +221,27 @@ Settings-tab tests bypass Testing Library on purpose. The mocked `Setting` API c
 
 [testing-library]: https://testing-library.com/
 
+## Stylesheet pipeline
+
+Styling uses Tailwind CSS 4 via `@tailwindcss/vite`. The entry lives at `src/styles.css`. From there, `src/main.ts` imports it, and Vite emits the compiled result as `styles.css` in the plugin root alongside `main.js`, via `build.lib.cssFileName`.
+
+Two deliberate choices for Obsidian compatibility:
+
+- **Preflight off.** Tailwind's CSS reset conflicts with Obsidian's theme, so `src/styles.css` imports `tailwindcss/theme.css` and `tailwindcss/utilities.css` layers individually and skips `tailwindcss/preflight.css`.
+- **Utilities prefixed with `tw:`**, per v4's variant syntax. Usage: `createEl('p', { cls: 'tw:mt-4 tw:font-semibold tw:text-text-muted' })`, no risk of collision against core CSS, other plugins, or user snippets.
+
+`@theme inline` in `src/styles.css` maps Obsidian's [CSS variables][obsidian-css-variables] into Tailwind's color palette so utilities like `tw:text-text-muted` and `tw:bg-background-primary` resolve against the live Obsidian theme and track light and dark switching automatically. Add new mappings in the same block.
+
+[obsidian-css-variables]: https://docs.obsidian.md/Reference/CSS+variables/CSS+variables
+
+## Notes
+
+- The plugin targets `minAppVersion` 1.7.2 so it can call `onUserEnable`, `onExternalSettingsChange`, and the modern view-state APIs.
+- Node 22.22.0 pinned via `.node-version` matches Obsidian 1.12's Electron 39 runtime. node-pty prebuilds target a specific ABI, so the pinned Node also matches what `@electron/rebuild` needs for headers.
+- Vite emits `main.js` and `styles.css` into the plugin root, not `dist/`, so Obsidian loads them directly. Both stay out of git.
+- Sessions live on the plugin, not the view, so closing a leaf detaches the xterm without ending the shell. Reattaching replays buffered output.
+- Coverage excludes `src/pty.ts` and `src/view.ts` because xterm needs a real renderer and node-pty needs the compiled binary. Every other source module stays at 100%.
+
 ## Commit conventions
 
 All commits follow [Conventional Commits][conventional-commits]. commitlint enforces the rules automatically via the `commit-msg` git hook.
@@ -184,36 +264,9 @@ Append `!` or a `BREAKING CHANGE:` footer for breaking changes. The subject line
 
 [conventional-commits]: https://www.conventionalcommits.org/
 
-## Release process
+## Releases
 
-Releases run through [release-please][release-please] on every push to `main`. The workflow scans conventional commits since the last tag. When it finds a `feat:`, `fix:`, or breaking change, it opens a release PR with:
-
-- a version bump in `package.json`, `manifest.json`, and `.github/release-please-manifest.json`
-- a new entry appended to `versions.json`
-- a `CHANGELOG.md` update
-
-Review the release PR and merge it via squash. Merging creates a GitHub release tagged with bare semver, with no `v` prefix per Obsidian's convention. A follow-up job then runs `pnpm build`, generates a [SLSA provenance][slsa] attestation via sigstore, then uploads `main.js`, `main.js.map`, `manifest.json`, and `styles.css` as release assets.
-
-Release assets also ship a flat `pty-<platform>-<arch>.node` file for each supported platform: `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, and `win32-x64`. BRAT copies every release asset into `.obsidian/plugins/<id>/` verbatim, and the bundled node-pty loader in `main.js` picks the binary matching `process.platform + '-' + process.arch`. The release workflow runs a build matrix per platform, collects each native, attests all assets via sigstore, then uploads the set.
-
-Pushes to the `beta` branch run the same flow through `.github/release-please-config.beta.json`, producing pre-release tags like `1.2.0-beta.1` that only [BRAT][brat] testers see.
-
-**Don't hand-edit release-managed files.** release-please owns `manifest.json` version, `package.json` version, `versions.json`, `CHANGELOG.md`, and the git tags.
-
-[release-please]: https://github.com/googleapis/release-please-action
-[slsa]: https://slsa.dev/
-[brat]: https://tfthacker.com/brat-developers
-
-### Verifying a release
-
-Anyone can verify that a release asset came from the workflow on `main`:
-
-```bash
-gh release download 1.2.0 -R tbhb/obsidian-shell -p 'main.js'
-gh attestation verify main.js --repo tbhb/obsidian-shell
-```
-
-A clean exit means sigstore confirms the asset matches the one the release workflow signed, with the OIDC identity tracing back to the exact workflow run on a GitHub-hosted runner.
+Releases run through release-please. See [`RELEASING.md`](RELEASING.md) for the full guide: channels, asset layout, `versions.json` sync, workflow permissions, sigstore verification, the first-release bootstrap pattern, and why distribution stays manual for now.
 
 ## Troubleshooting
 
@@ -261,4 +314,6 @@ The first-enable heuristic reads `loadData()` and treats a null return as a fres
 
 - [`README.md`](README.md) for the user-facing overview
 - [`AGENTS.md`](AGENTS.md) for the condensed agent guide
+- [`RELEASING.md`](RELEASING.md) for the release pipeline and verification
+- [`AI_DISCLOSURE.md`](AI_DISCLOSURE.md) for the AI disclosure statement
 - [`CHANGELOG.md`](CHANGELOG.md) for release history
