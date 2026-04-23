@@ -1,13 +1,13 @@
 # Development guide
 
-A walkthrough for humans contributing to `obsidian-vite-sample-plugin`. For the short version aimed at AI coding agents, see [`AGENTS.md`](AGENTS.md).
+A walkthrough for humans contributing to `obsidian-terminal`. For the short version aimed at AI coding agents, see [`AGENTS.md`](AGENTS.md).
 
 ## Prerequisites
 
 You need these on your machine before the first `pnpm install`:
 
-- [Node.js][nodejs] 24 LTS, matching the version CI uses
-- [pnpm][pnpm] 10 or newer
+- [Node.js][nodejs] 22.22.0, pinned in `.node-version` to match Obsidian 1.12's Electron 39 runtime. [mise][mise], `fnm`, `nvm`, or any other tool that reads `.node-version` picks it up automatically.
+- [pnpm][pnpm] 10.32.1, pinned through the `packageManager` field and resolved by [Corepack][corepack]
 - A shell capable of running POSIX scripts. macOS, Linux, or WSL all work
 
 Three linters in the full gate live outside npm. Install them via your package manager before running `pnpm lint:all`:
@@ -19,7 +19,9 @@ Three linters in the full gate live outside npm. Install them via your package m
 `yamllint` runs through `uvx` in CI, so it doesn't need a local install. Homebrew works if you prefer running the raw binary.
 
 [nodejs]: https://nodejs.org/
+[mise]: https://mise.jdx.dev/
 [pnpm]: https://pnpm.io/
+[corepack]: https://nodejs.org/api/corepack.html
 [rumdl]: https://github.com/rvben/rumdl
 [vale]: https://vale.sh/
 [actionlint]: https://github.com/rhysd/actionlint
@@ -30,8 +32,8 @@ Clone the repository into any Obsidian vault's plugins directory and install dep
 
 ```bash
 cd /path/to/vault/.obsidian/plugins
-git clone https://github.com/tbhb/obsidian-vite-sample-plugin.git
-cd obsidian-vite-sample-plugin
+git clone https://github.com/tbhb/obsidian-terminal.git
+cd obsidian-terminal
 pnpm install
 ```
 
@@ -43,7 +45,7 @@ Before the first run, sync Vale's style packages:
 pnpm vale:sync
 ```
 
-That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/obsidian-vite-sample-plugin/` and the vocabulary under `.vale/config/vocabularies/obsidian-vite-sample-plugin/` stay committed.
+That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/obsidian-terminal/` and the vocabulary under `.vale/config/vocabularies/obsidian-terminal/` stay committed.
 
 ## Development loop
 
@@ -92,7 +94,7 @@ Each `lint:*` script runs a single tool. Check `package.json` for the full list.
 - **Biome complains about formatting.** Run `pnpm format`. Biome handles indentation, quote style, trailing commas, and import sort automatically.
 - **ESLint flags an Obsidian rule.** Read the rule name, then jump to `eslint-plugin-obsidianmd` docs. Most fixes rename a class or swap an `innerHTML` call for a `createEl` call.
 - **rumdl reports `MD040` missing language.** Add a language hint after the opening triple backticks. Use `text` for plain output.
-- **vale reports unknown words.** Add the term to `.vale/config/vocabularies/obsidian-vite-sample-plugin/accept.txt`. The file accepts one regular expression per line.
+- **vale reports unknown words.** Add the term to `.vale/config/vocabularies/obsidian-terminal/accept.txt`. The file accepts one regular expression per line.
 - **cspell reports unknown words.** Add them to `cspell-words.txt`, one per line.
 - **yamllint reports a long line.** Break the value across lines with a folded scalar, or add `# yamllint disable-line rule:line-length` at the end of the line.
 - **actionlint reports a shellcheck issue.** Most of these flag unquoted variables. Fix them in place.
@@ -162,17 +164,15 @@ Pushes to the `beta` branch run the same flow through `.github/release-please-co
 Anyone can verify that a release asset came from the workflow on `main`:
 
 ```bash
-gh release download 1.2.0 -R tbhb/obsidian-vite-sample-plugin -p 'main.js'
-gh attestation verify main.js --repo tbhb/obsidian-vite-sample-plugin
+gh release download 1.2.0 -R tbhb/obsidian-terminal -p 'main.js'
+gh attestation verify main.js --repo tbhb/obsidian-terminal
 ```
 
 A clean exit means sigstore confirms the asset matches the one the release workflow signed, with the OIDC identity tracing back to the exact workflow run on a GitHub-hosted runner.
 
 ## Testing the plugin inside Obsidian
 
-With `pnpm dev` running, open your vault. Go to **Settings → Community plugins**, then toggle **obsidian-vite-sample-plugin** on. The plugin registers an "Open Vite sample view" ribbon icon, four commands under **Cmd-P**, a settings tab with a greeting field plus a status-bar toggle and a tick-interval slider, and an `obsidian://vite-sample` protocol handler that logs its parameters.
-
-Edits to `src/` rebuild automatically. Reload the plugin with the [Hot Reload][hot-reload] community plugin to pick up the new build without restarting Obsidian.
+With `pnpm dev` running, open your vault. Go to **Settings → Community plugins**, then toggle **Terminal** on. The plugin currently ships only a settings tab, which renders empty until real settings land. Edits to `src/` rebuild automatically. Reload the plugin with the [Hot Reload][hot-reload] community plugin to pick up the new build without restarting Obsidian.
 
 ## Troubleshooting
 
@@ -194,7 +194,7 @@ Run `pnpm run prepare` to regenerate the `.husky/_` wrapper directory.
 
 ### `vale` complains about unknown words
 
-Extend `.vale/config/vocabularies/obsidian-vite-sample-plugin/accept.txt`. That file takes one regular expression per line. Prefer spelling out proper names in full and reach for a broad pattern like `[A-Z]{2,}` only as a last resort.
+Extend `.vale/config/vocabularies/obsidian-terminal/accept.txt`. That file takes one regular expression per line. Prefer spelling out proper names in full and reach for a broad pattern like `[A-Z]{2,}` only as a last resort.
 
 ### CI fails on a rumdl rule for `CHANGELOG.md`
 

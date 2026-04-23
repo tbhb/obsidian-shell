@@ -6,6 +6,7 @@ bundler
 CI
 CodeMirror
 commitlint
+Corepack
 [Cc]onfigs?
 cspell
 ESLint
@@ -27,6 +28,7 @@ parenthetical[s]?
 POSIX
 [Pp]reflight
 proselint
+pseudoterminal
 rolldown
 repo
 Rolldown

@@ -137,7 +137,7 @@ Add new technical terms to `cspell-words.txt`. Avoid em-dashes entirely, use com
 - Register listeners and intervals via `this.registerDomEvent()` and `this.registerInterval()` so they unload with the plugin.
 - Gate desktop-only features behind `Platform.isMobile` checks.
 - Use `createEl`, `createDiv`, and `createSpan` helpers. Never set `innerHTML`.
-- The plugin id `obsidian-vite-sample-plugin` must match the folder name under `.obsidian/plugins/` for local development.
+- The plugin id `obsidian-terminal` must match the folder name under `.obsidian/plugins/` for local development.
 
 ## Rules at a glance
 

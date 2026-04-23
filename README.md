@@ -1,30 +1,14 @@
-# obsidian-vite-sample-plugin
+# obsidian-terminal
 
-A modern [Obsidian][obsidian] plugin scaffold built with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [Biome 2][biome], [TypeScript][typescript] 5.8+, and [pnpm][pnpm].
+An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] and [node-pty][node-pty]. Desktop only.
 
 [obsidian]: https://obsidian.md/
-[vite]: https://vite.dev/
-[rolldown]: https://rolldown.rs/
-[tailwind]: https://tailwindcss.com/
-[vitest]: https://vitest.dev/
-[testing-library]: https://testing-library.com/
-[biome]: https://biomejs.dev/
-[typescript]: https://www.typescriptlang.org/
-[pnpm]: https://pnpm.io/
+[xtermjs]: https://xtermjs.org/
+[node-pty]: https://github.com/microsoft/node-pty
 
-The scaffold demonstrates the current [Obsidian plugin API][obsidian-plugin-api]: [commands][obsidian-commands], a [ribbon icon][obsidian-ribbon], a [`Platform`][obsidian-platform]-gated [status bar item][obsidian-status-bar], a [settings tab][obsidian-settings], a [modal][obsidian-modal], a custom [`ItemView`][obsidian-views] opened from [`onUserEnable`][obsidian-on-user-enable], [`onExternalSettingsChange`][obsidian-on-external-settings-change] reloads, and an [`obsidian://` protocol handler][obsidian-protocol-handler].
+**Status:** scaffolding stage. The plugin boots and registers an empty settings tab. The terminal view and pseudoterminal backend land in follow-up work. Bootstrapped from [obsidian-vite-sample-plugin][scaffold].
 
-[obsidian-plugin-api]: https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin
-[obsidian-commands]: https://docs.obsidian.md/Plugins/User+interface/Commands
-[obsidian-ribbon]: https://docs.obsidian.md/Plugins/User+interface/Ribbon+actions
-[obsidian-platform]: https://docs.obsidian.md/Reference/TypeScript+API/Platform
-[obsidian-status-bar]: https://docs.obsidian.md/Plugins/User+interface/Status+bar
-[obsidian-settings]: https://docs.obsidian.md/Plugins/User+interface/Settings
-[obsidian-modal]: https://docs.obsidian.md/Plugins/User+interface/Modals
-[obsidian-views]: https://docs.obsidian.md/Plugins/User+interface/Views
-[obsidian-on-user-enable]: https://docs.obsidian.md/Reference/TypeScript+API/Plugin/onUserEnable
-[obsidian-on-external-settings-change]: https://docs.obsidian.md/Reference/TypeScript+API/Plugin/onExternalSettingsChange
-[obsidian-protocol-handler]: https://docs.obsidian.md/Reference/TypeScript+API/Plugin/registerObsidianProtocolHandler
+[scaffold]: https://github.com/tbhb/obsidian-vite-sample-plugin
 
 ## Scripts
 
@@ -55,18 +39,6 @@ Two deliberate choices for Obsidian compatibility:
 
 [obsidian-css-variables]: https://docs.obsidian.md/Reference/CSS+variables/CSS+variables
 
-Hand-written BEM classes still live in `src/styles.css` under `@layer components`. Use them for stateful view and modal structure, and reach for Tailwind utilities for one-off layout.
-
-### Testing Library
-
-UI tests use Testing Library rather than ad-hoc `querySelector` calls. See `test/view.test.ts` and `test/modal.test.ts`:
-
-- `@testing-library/dom` provides `getByRole`, `getByText`, `within`, and `queryBy*` for resilient DOM queries.
-- `@testing-library/jest-dom` adds matchers like `toBeInTheDocument`, `toHaveTextContent`, `toHaveClass`, and `toBeEmptyDOMElement`. Registered in `test/setup.ts` via `import '@testing-library/jest-dom/vitest'`.
-- `@testing-library/user-event` ships with the scaffold, ready for when you add user-interaction tests. Use `fireEvent` for low-level events and `userEvent` for higher-level flows.
-
-Note: tests attach `view.contentEl` and `modal.contentEl` to `document.body` in `beforeEach` and `afterEach` so jest-dom's in-document matchers work. That mirrors Obsidian's runtime behavior. Settings-tab tests bypass Testing Library because the mocked Obsidian `Setting` API doesn't render real form controls, so the tests drive the captured `onChange` callbacks directly via the mock's `__trigger()` helpers.
-
 ### Releases (release-please + BRAT)
 
 [release-please] fully automates releases:
@@ -81,7 +53,7 @@ Note: tests attach `view.contentEl` and `modal.contentEl` to `document.body` in 
 
 **BRAT compatibility.** [BRAT] works with the stable channel out of the box. For beta testers:
 
-- Point them at `tbhb/obsidian-vite-sample-plugin`, or wherever this repository lives, in BRAT's "Add beta plugin" dialog.
+- Point them at `tbhb/obsidian-terminal`, or wherever this repository lives, in BRAT's "Add beta plugin" dialog.
 - Push betas to the `beta` branch. BRAT reads each release's `manifest.json` asset and respects GitHub's `prerelease: true` flag, so beta testers automatically get the `-beta.N` releases while users installing from the community catalog only see stable versions.
 - Modern BRAT doesn't use the legacy `manifest-beta.json` file. It reads the GitHub release asset plus the pre-release flag.
 
@@ -101,10 +73,9 @@ Note: tests attach `view.contentEl` and `modal.contentEl` to `document.body` in 
 ## Layout
 
 ```text
-obsidian-vite-sample-plugin/
+obsidian-terminal/
 ├── manifest.json            # Obsidian plugin manifest
 ├── versions.json            # version -> minAppVersion map
-├── styles.css               # plugin CSS (uses Obsidian CSS variables only)
 ├── vite.config.ts           # Vite 8 / Rolldown library-mode config
 ├── vitest.config.ts         # Vitest config (aliases `obsidian` to a stub)
 ├── tsconfig.json            # strict TS, ES2022, bundler resolution
@@ -113,12 +84,12 @@ obsidian-vite-sample-plugin/
 ├── src/
 │   ├── main.ts              # Plugin entry
 │   ├── settings.ts          # Settings tab + DEFAULT_SETTINGS + mergeSettings
-│   ├── view.ts              # Custom ItemView
-│   └── modal.ts             # Modal
+│   └── styles.css           # Tailwind entry + @theme inline block
 └── test/
     ├── __mocks__/obsidian.ts  # runtime stub of the obsidian module
     ├── setup.ts               # DOM helper polyfills (createEl, empty, ...)
-    └── *.test.ts
+    ├── main.test.ts
+    └── settings.test.ts
 ```
 
 ## Notes
@@ -126,6 +97,7 @@ obsidian-vite-sample-plugin/
 - The `obsidian` npm package ships types only, so tests run against a local stub aliased in `vitest.config.ts`. Extend `test/__mocks__/obsidian.ts` as you reach for more of the API.
 - Vite emits `main.js` into the plugin folder (not `dist/`) so Obsidian loads it directly. Git ignores it. Publish it through GitHub releases.
 - The plugin targets `minAppVersion` 1.7.2 to use `onUserEnable` and `onExternalSettingsChange`.
+- Node 22.22.0 pinned via `.node-version` matches Obsidian 1.12's Electron 39 runtime. node-pty's native binaries require that alignment.
 
 ## Development
 
