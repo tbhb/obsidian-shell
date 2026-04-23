@@ -13,6 +13,7 @@ vi.mock('../src/pty', () => {
     this.attach = vi.fn();
     this.detach = vi.fn();
     this.write = vi.fn();
+    this.onExit = vi.fn();
   });
   return {
     probePty: vi.fn(),
@@ -72,7 +73,7 @@ describe('ShellPickerModal', () => {
   it('delegates selection to switchToSession', () => {
     const entry = makeEntry('Shell 4');
     const spy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
-    modal.onChooseItem(entry, new MouseEvent('click'));
+    modal.onChooseItem(entry);
     expect(spy).toHaveBeenCalledWith(entry.id);
   });
 });

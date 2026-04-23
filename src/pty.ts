@@ -60,6 +60,7 @@ export class PtySession {
   private buffer = '';
   private writer: PtyDataWriter | null = null;
   private dead = false;
+  private exitHandler: (() => void) | null = null;
 
   constructor(plugin: Plugin, options: PtySessionOptions = {}) {
     const pty = loadNodePty(plugin);
@@ -81,11 +82,16 @@ export class PtySession {
     this.proc.onExit(() => {
       this.dead = true;
       this.route('\r\n[process exited]\r\n');
+      this.exitHandler?.();
     });
   }
 
   get isDead(): boolean {
     return this.dead;
+  }
+
+  onExit(cb: () => void): void {
+    this.exitHandler = cb;
   }
 
   attach(writer: PtyDataWriter): void {

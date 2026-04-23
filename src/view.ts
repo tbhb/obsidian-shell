@@ -160,6 +160,7 @@ export class TerminalView extends ItemView {
     this.terminal?.dispose();
     this.terminal = null;
     this.fitAddon = null;
+    this.plugin.notifySessionsChanged();
   }
 
   reattachSession(): void {
@@ -197,6 +198,7 @@ export class TerminalView extends ItemView {
     this.session = entry.session;
     this.refreshTabTitle();
     this.focusTerminalIfActive();
+    this.plugin.notifySessionsChanged();
   }
 
   onResize(): void {
@@ -231,6 +233,7 @@ export class TerminalView extends ItemView {
     entry.session.attach((data) => this.terminal?.write(data));
     this.session = entry.session;
     this.refreshTabTitle();
+    this.plugin.notifySessionsChanged();
   }
 
   private focusTerminalIfActive(): void {

@@ -7,6 +7,7 @@ import {
   type TerminalPluginSettings,
   TerminalSettingTab,
 } from './settings';
+import { SHELLS_VIEW_TYPE, ShellsView } from './sidebar';
 import './styles.css';
 import { TERMINAL_VIEW_TYPE, TerminalView } from './view';
 
@@ -22,15 +23,25 @@ export default class TerminalPlugin extends Plugin {
   settings: TerminalPluginSettings = DEFAULT_SETTINGS;
   private readonly sessions = new Map<string, SessionEntry>();
   private nextSessionNumber = 1;
+  private readonly sessionListeners = new Set<() => void>();
 
   async onload(): Promise<void> {
     await this.loadSettings();
     this.addSettingTab(new TerminalSettingTab(this.app, this));
     this.registerView(TERMINAL_VIEW_TYPE, (leaf) => new TerminalView(leaf, this));
+    this.registerView(SHELLS_VIEW_TYPE, (leaf) => new ShellsView(leaf, this));
+    this.addRibbonIcon('terminal-square', 'Shells', () => {
+      void this.activateShellsView();
+    });
     this.addCommand({
       id: 'open-shell',
       name: 'Open shell',
       callback: () => this.activateView(),
+    });
+    this.addCommand({
+      id: 'open-shells-sidebar',
+      name: 'Open shells sidebar',
+      callback: () => this.activateShellsView(),
     });
     this.addCommand({
       id: 'new-shell',
@@ -102,6 +113,21 @@ export default class TerminalPlugin extends Plugin {
     await workspace.revealLeaf(leaf);
   }
 
+  async activateShellsView(): Promise<void> {
+    const { workspace } = this.app;
+    const existing = workspace.getLeavesOfType(SHELLS_VIEW_TYPE)[0];
+    if (existing) {
+      await workspace.revealLeaf(existing);
+      return;
+    }
+    const leaf = workspace.getLeftLeaf(false);
+    if (!leaf) {
+      return;
+    }
+    await leaf.setViewState({ type: SHELLS_VIEW_TYPE, active: true });
+    await workspace.revealLeaf(leaf);
+  }
+
   async newShell(): Promise<void> {
     const { workspace } = this.app;
     const leaf = workspace.getLeaf('tab');
@@ -158,8 +184,10 @@ export default class TerminalPlugin extends Plugin {
       cols,
       rows,
     });
+    session.onExit(() => this.notifySessionsChanged());
     const entry: SessionEntry = { id, label, session };
     this.sessions.set(id, entry);
+    this.notifySessionsChanged();
     return entry;
   }
 
@@ -229,13 +257,31 @@ export default class TerminalPlugin extends Plugin {
     }
     entry.session.kill();
     this.sessions.delete(id);
+    this.notifySessionsChanged();
   }
 
   killAllSessions(): void {
+    if (this.sessions.size === 0) {
+      return;
+    }
     for (const entry of this.sessions.values()) {
       entry.session.kill();
     }
     this.sessions.clear();
+    this.notifySessionsChanged();
+  }
+
+  onSessionsChanged(cb: () => void): () => void {
+    this.sessionListeners.add(cb);
+    return () => {
+      this.sessionListeners.delete(cb);
+    };
+  }
+
+  notifySessionsChanged(): void {
+    for (const cb of this.sessionListeners) {
+      cb();
+    }
   }
 
   refreshOpenViews(): void {

@@ -39,4 +39,65 @@
     flex: 1 1 auto;
     min-height: 0;
   }
+
+  .obsidian-terminal-shells-panel {
+    padding: var(--size-4-2);
+  }
+
+  .obsidian-terminal-shells-empty {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin: 0;
+  }
+
+  .obsidian-terminal-shells-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-1);
+  }
+
+  .obsidian-terminal-shells-row {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-2-2) var(--size-4-2);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+  }
+
+  .obsidian-terminal-shells-row:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  .obsidian-terminal-shells-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text-normal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .obsidian-terminal-shells-state {
+    font-size: var(--font-ui-smaller);
+    padding: 0 var(--size-2-2);
+    border-radius: var(--radius-s);
+    background: var(--background-secondary);
+    color: var(--text-muted);
+  }
+
+  .obsidian-terminal-shells-row[data-state='attached'] .obsidian-terminal-shells-state {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  .obsidian-terminal-shells-row[data-state='exited'] .obsidian-terminal-shells-state {
+    background: var(--background-modifier-error);
+    color: var(--text-on-accent);
+  }
+
+  .obsidian-terminal-shells-actions {
+    display: flex;
+    align-items: center;
+  }
 }

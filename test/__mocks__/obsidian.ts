@@ -230,6 +230,7 @@ export class App {
     activeLeaf: WorkspaceLeaf | null;
     getLeavesOfType: (type: string) => WorkspaceLeaf[];
     getRightLeaf: (split: boolean) => WorkspaceLeaf | null;
+    getLeftLeaf: (split: boolean) => WorkspaceLeaf | null;
     getLeaf: (mode?: boolean | 'split' | 'tab' | 'window') => WorkspaceLeaf;
     revealLeaf: (leaf: WorkspaceLeaf) => unknown;
     detachLeavesOfType: (type: string) => void;
@@ -253,6 +254,7 @@ export class App {
       activeLeaf: null,
       getLeavesOfType: vi.fn((_type: string) => [] as WorkspaceLeaf[]),
       getRightLeaf: vi.fn((_split: boolean) => null),
+      getLeftLeaf: vi.fn((_split: boolean) => null),
       getLeaf: vi.fn((_mode?: boolean | 'split' | 'tab' | 'window') => new WorkspaceLeaf()),
       revealLeaf: vi.fn(),
       detachLeavesOfType: vi.fn((_type: string) => undefined),
@@ -771,6 +773,12 @@ export abstract class FuzzySuggestModal<T> extends SuggestModal<FuzzyMatch<T>> {
   onChooseSuggestion(match: FuzzyMatch<T>, evt: MouseEvent | KeyboardEvent): void {
     this.onChooseItem(match.item, evt);
   }
+}
+
+// Obsidian's setIcon stamps an SVG into the element. The mock only needs
+// to mark the element so tests can assert which icon was requested.
+export function setIcon(el: HTMLElement, icon: string): void {
+  el.dataset.icon = icon;
 }
 
 // Obsidian's renderResults highlights matched ranges in `text`. The mock

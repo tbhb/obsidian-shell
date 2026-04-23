@@ -15,6 +15,7 @@ vi.mock('../src/pty', () => {
     this.attach = vi.fn();
     this.detach = vi.fn();
     this.write = vi.fn();
+    this.onExit = vi.fn();
   });
   return {
     probePty: vi.fn(),
@@ -288,6 +289,83 @@ describe('TerminalPlugin.describeSessionState', () => {
   });
 });
 
+describe('TerminalPlugin.activateShellsView', () => {
+  it('reveals an existing shells-view leaf', async () => {
+    const plugin = makePlugin();
+    const existing = new WorkspaceLeaf();
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([existing]);
+    const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+    await plugin.activateShellsView();
+    expect(reveal).toHaveBeenCalledWith(existing);
+  });
+
+  it('creates a new left leaf when none exists', async () => {
+    const plugin = makePlugin();
+    const leaf = new WorkspaceLeaf();
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
+    vi.spyOn(plugin.app.workspace, 'getLeftLeaf').mockReturnValue(leaf);
+    await plugin.activateShellsView();
+    expect(leaf.setViewState).toHaveBeenCalledWith({
+      type: 'obsidian-terminal-shells',
+      active: true,
+    });
+  });
+
+  it('bails out when getLeftLeaf returns null', async () => {
+    const plugin = makePlugin();
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
+    vi.spyOn(plugin.app.workspace, 'getLeftLeaf').mockReturnValue(null);
+    const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+    await plugin.activateShellsView();
+    expect(reveal).not.toHaveBeenCalled();
+  });
+});
+
+describe('TerminalPlugin.onSessionsChanged', () => {
+  it('fires listeners when sessions are created, killed, or killed all', () => {
+    const plugin = makePlugin();
+    const listener = vi.fn();
+    plugin.onSessionsChanged(listener);
+    const entry = plugin.createSession(80, 24);
+    expect(listener).toHaveBeenCalledTimes(1);
+    plugin.killSession(entry.id);
+    expect(listener).toHaveBeenCalledTimes(2);
+    plugin.createSession(80, 24);
+    plugin.killAllSessions();
+    expect(listener).toHaveBeenCalledTimes(4);
+  });
+
+  it('returns an unsubscribe function that stops further notifications', () => {
+    const plugin = makePlugin();
+    const listener = vi.fn();
+    const unsub = plugin.onSessionsChanged(listener);
+    unsub();
+    plugin.createSession(80, 24);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('killAllSessions is a no-op without listeners when the map is empty', () => {
+    const plugin = makePlugin();
+    const listener = vi.fn();
+    plugin.onSessionsChanged(listener);
+    plugin.killAllSessions();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('wires session.onExit to notify listeners when the PTY exits', () => {
+    const plugin = makePlugin();
+    const listener = vi.fn();
+    plugin.onSessionsChanged(listener);
+    const entry = plugin.createSession(80, 24);
+    const exitMock = (entry.session as unknown as { onExit: ReturnType<typeof vi.fn> }).onExit;
+    expect(exitMock).toHaveBeenCalled();
+    const [exitCb] = exitMock.mock.calls[0] ?? [];
+    listener.mockClear();
+    exitCb?.();
+    expect(listener).toHaveBeenCalled();
+  });
+});
+
 describe('TerminalPlugin.openShellPicker', () => {
   it('opens a ShellPickerModal instance', () => {
     const plugin = makePlugin();
@@ -474,17 +552,20 @@ describe('TerminalPlugin.onunload', () => {
 });
 
 describe('TerminalPlugin.onload', () => {
-  it('registers the setting tab, the terminal view, and every command', async () => {
+  it('registers the setting tab, both views, ribbon icon, and every command', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     expect(plugin.__settingTabs).toHaveLength(1);
     expect(plugin.__viewFactories.has(TERMINAL_VIEW_TYPE)).toBe(true);
+    expect(plugin.__viewFactories.has('obsidian-terminal-shells')).toBe(true);
+    expect(plugin.__ribbonIcons.map((r) => r.icon)).toContain('terminal-square');
     expect(plugin.__findCommand('open-shell')).toBeDefined();
     expect(plugin.__findCommand('new-shell')).toBeDefined();
     expect(plugin.__findCommand('kill-shell')).toBeDefined();
     expect(plugin.__findCommand('restart-shell')).toBeDefined();
     expect(plugin.__findCommand('kill-all-shells')).toBeDefined();
     expect(plugin.__findCommand('switch-shell')).toBeDefined();
+    expect(plugin.__findCommand('open-shells-sidebar')).toBeDefined();
     expect(plugin.__findCommand('run-self-test')).toBeDefined();
     plugin.onunload();
   });
@@ -493,6 +574,16 @@ describe('TerminalPlugin.onload', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const factory = plugin.__viewFactories.get(TERMINAL_VIEW_TYPE);
+    expect(factory).toBeDefined();
+    const leaf = new WorkspaceLeaf();
+    expect(() => factory?.(leaf)).not.toThrow();
+    plugin.onunload();
+  });
+
+  it('constructs a ShellsView through the registered factory', async () => {
+    const plugin = makePlugin();
+    await plugin.onload();
+    const factory = plugin.__viewFactories.get('obsidian-terminal-shells');
     expect(factory).toBeDefined();
     const leaf = new WorkspaceLeaf();
     expect(() => factory?.(leaf)).not.toThrow();
@@ -605,6 +696,25 @@ describe('shell commands wiring', () => {
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'openShellPicker').mockReturnValue();
     plugin.__findCommand('switch-shell')?.callback?.();
+    expect(spy).toHaveBeenCalled();
+    plugin.onunload();
+  });
+
+  it('open-shells-sidebar calls activateShellsView', async () => {
+    const plugin = makePlugin();
+    await plugin.onload();
+    const spy = vi.spyOn(plugin, 'activateShellsView').mockResolvedValue();
+    plugin.__findCommand('open-shells-sidebar')?.callback?.();
+    expect(spy).toHaveBeenCalled();
+    plugin.onunload();
+  });
+
+  it('the ribbon icon callback activates the shells view', async () => {
+    const plugin = makePlugin();
+    await plugin.onload();
+    const spy = vi.spyOn(plugin, 'activateShellsView').mockResolvedValue();
+    const ribbon = plugin.__ribbonIcons.find((r) => r.icon === 'terminal-square');
+    ribbon?.callback(new MouseEvent('click'));
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
