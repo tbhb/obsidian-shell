@@ -16,7 +16,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "24"
+  # Pin Node to the Electron 39 runtime we target in production. Obsidian
+  # desktop ships this exact version, so every build and test shard runs
+  # against it to keep ABI drift out of CI.
+  NODE_VERSION: "22.22.0"
   PNPM_VERSION: "10"
   RUMDL_VERSION: "0.1.69"
   VALE_VERSION: "3.14.1"
@@ -65,8 +68,22 @@ jobs:
           fail_level: error
 
   build:
-    name: Build
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Per-platform failures surface independently. A node-pty ABI break on
+      # Windows shouldn't hide a separate darwin build regression.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: darwin-arm64
+            runner: macos-14
+          - platform: darwin-x64
+            runner: macos-15-intel
+          - platform: win32-x64
+            runner: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -88,13 +105,20 @@ jobs:
       - name: Typecheck (src + test)
         run: pnpm run typecheck
 
+      # Compile node-pty against the Electron 39 headers on every matrix leg.
+      # Catches ABI drift and missing toolchain prerequisites (python,
+      # node-gyp, MSVC on Windows, Xcode CLT on macOS) at CI time rather
+      # than on first plugin load.
+      - name: Rebuild native module (node-pty against Electron 39)
+        run: pnpm run rebuild:native
+
       - name: Build plugin
         run: pnpm run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: plugin-build
+          name: plugin-build-${{ matrix.platform }}
           path: |
             main.js
             main.js.map
@@ -107,6 +131,10 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    # Vitest excludes src/pty.ts and src/view.ts (native + xterm). The
+    # remaining surface is pure TypeScript against a mocked obsidian
+    # module, so cross-OS runs add cost without new signal. The build
+    # matrix covers the native side.
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2

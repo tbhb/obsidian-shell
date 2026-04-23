@@ -18,6 +18,7 @@ Keymap
 lezer
 linktext
 Menlo
+MSVC
 nanostaged
 obsidianmd
 oneline
