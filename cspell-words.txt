@@ -38,6 +38,7 @@ tbhb
 tfthacker
 tsbuildinfo
 unsub
+unsuffixed
 vite
 vitejs
 vitest

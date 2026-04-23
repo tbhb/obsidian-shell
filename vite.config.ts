@@ -51,6 +51,23 @@ function loadNativeModule(name) {
         return { code: code.replace(pattern, replacement), map: null };
       }
 
+      if (normalized.endsWith('/node-pty/lib/unixTerminal.js')) {
+        // Release assets land as flat files, so the plugin folder holds every
+        // platform's spawn-helper side by side. Pick the one matching the
+        // runtime platform; fall back to the unsuffixed name for local dev
+        // where pnpm rebuild:native emits a single spawn-helper.
+        const helperPattern = /var helperPath = native\.dir \+ '\/spawn-helper';/;
+        if (!helperPattern.test(code)) {
+          this.error('Failed to locate spawn-helper resolution in node-pty/lib/unixTerminal.js');
+        }
+        const helperReplacement = `var helperPath = (function () {
+    var fs = require('fs');
+    var suffixed = native.dir + '/spawn-helper-' + process.platform + '-' + process.arch;
+    return fs.existsSync(suffixed) ? suffixed : native.dir + '/spawn-helper';
+})();`;
+        return { code: code.replace(helperPattern, helperReplacement), map: null };
+      }
+
       if (normalized.endsWith('/node-pty/lib/index.js')) {
         // Defer platform-specific terminal ctor lookup and exports.native so
         // nothing in node-pty tries to load the binary at bundle import time.
