@@ -30,15 +30,16 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    height: 100%;
     /*
-     * Obsidian's app status bar is a position: absolute overlay pinned to
-     * the bottom-right of the window, so any leaf content rendered edge-to-
-     * edge (like a terminal's last row) ends up hidden under it. Reserve a
-     * ~28px strip along the bottom so tmux-style status lines and prompts
-     * stay visible.
+     * Shrink the host instead of adding padding. xterm's FitAddon measures
+     * the host via getComputedStyle(parent).height but only subtracts
+     * padding it finds on the .xterm element (never its parent), so host
+     * padding makes FitAddon overshoot by that many pixels — exactly the
+     * tmux-status-under-the-Obsidian-status-bar symptom. Reducing the host
+     * height moves its bottom edge above Obsidian's position: absolute
+     * status bar overlay and keeps FitAddon's measurement correct.
      */
-    padding: var(--size-4-2) var(--size-4-2) calc(var(--size-4-2) + 28px);
+    height: calc(100% - 36px);
     background: var(--background-primary);
     overflow: hidden;
   }
