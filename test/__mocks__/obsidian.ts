@@ -795,12 +795,15 @@ export interface ViewStateResult {
 export class ItemView extends Component {
   app: App = new App();
   leaf: WorkspaceLeaf;
+  containerEl: HTMLElement;
   contentEl: HTMLElement;
 
   constructor(leaf: WorkspaceLeaf) {
     super();
     this.leaf = leaf;
+    this.containerEl = document.createElement('div');
     this.contentEl = document.createElement('div');
+    this.containerEl.appendChild(this.contentEl);
   }
 
   getViewType(): string {

@@ -114,17 +114,20 @@ export class TerminalView extends ItemView {
       webglAddon = null;
     }
 
+    this.reserveStatusBarSpace();
     fitAddon.fit();
 
     // Obsidian's own onResize hook does not fire for every layout change
     // (for example, dragging a leaf from the right sidebar into a bottom
-    // split). Observe the host directly so the terminal always matches its
-    // container, which keeps tmux-style status lines from rendering past
-    // the leaf's bottom edge.
+    // split). Observe containerEl (the outer leaf wrapper we never mutate)
+    // so our own height writes on contentEl do not retrigger the observer.
     this.resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => this.fitAddon?.fit());
+      requestAnimationFrame(() => {
+        this.reserveStatusBarSpace();
+        this.fitAddon?.fit();
+      });
     });
-    this.resizeObserver.observe(this.contentEl);
+    this.resizeObserver.observe(this.containerEl);
 
     terminal.onSelectionChange(() => {
       if (this.plugin.settings.behavior.copyOnSelection && terminal.hasSelection()) {
@@ -148,6 +151,7 @@ export class TerminalView extends ItemView {
     // the xterm instance and the writer binding go away here.
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    this.contentEl.style.removeProperty('height');
     this.session?.detach();
     this.session = null;
     this.webglAddon?.dispose();
@@ -203,6 +207,34 @@ export class TerminalView extends ItemView {
     entry.session.attach((data) => this.terminal?.write(data));
     this.session = entry.session;
     this.refreshTabTitle();
+  }
+
+  private reserveStatusBarSpace(): void {
+    // Obsidian's app status bar is a position: absolute overlay pinned to
+    // the bottom-right of the window, not a layout sibling of the workspace
+    // splits. A terminal rendering edge-to-edge hides its bottom row under
+    // the overlay. FitAddon's measurement only subtracts padding on the
+    // .xterm element, so CSS-only fixes either overshoot or leave a gap.
+    // Measure the overlay at runtime and shrink the content element so its
+    // bottom sits at the overlay's top edge; FitAddon then reads an
+    // accurate available height.
+    const statusBar = document.querySelector('.status-bar');
+    if (!(statusBar instanceof HTMLElement)) {
+      this.contentEl.style.removeProperty('height');
+      return;
+    }
+    const sbRect = statusBar.getBoundingClientRect();
+    if (sbRect.height === 0) {
+      this.contentEl.style.removeProperty('height');
+      return;
+    }
+    const contentRect = this.contentEl.getBoundingClientRect();
+    const target = Math.max(0, Math.floor(sbRect.top - contentRect.top));
+    // Skip no-op writes to keep ResizeObserver callbacks quiet.
+    if (Math.abs(target - this.contentEl.clientHeight) < 1) {
+      return;
+    }
+    this.contentEl.style.height = `${target}px`;
   }
 
   private refreshTabTitle(): void {
