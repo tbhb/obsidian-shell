@@ -1,13 +1,26 @@
 import { __getNotices, __resetObsidianMocks, App, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TerminalPlugin from '../src/main';
-import { probePty } from '../src/pty';
+import { PtySession, probePty } from '../src/pty';
 import { DEFAULT_SETTINGS } from '../src/settings';
 import { TERMINAL_VIEW_TYPE, TerminalView } from '../src/view';
 
-vi.mock('../src/pty', () => ({
-  probePty: vi.fn(),
-}));
+vi.mock('../src/pty', () => {
+  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
+    this.isDead = false;
+    this.kill = vi.fn(() => {
+      this.isDead = true;
+    });
+    this.resize = vi.fn();
+    this.attach = vi.fn();
+    this.detach = vi.fn();
+    this.write = vi.fn();
+  });
+  return {
+    probePty: vi.fn(),
+    PtySession: ctor,
+  };
+});
 
 // The real src/view.ts pulls in @xterm/xterm, which touches the DOM at
 // construction time. Tests only need the module symbols; mock them.
@@ -19,10 +32,30 @@ vi.mock('../src/view', () => ({
       public plugin: unknown,
     ) {}
     applySettings = vi.fn();
+    reattachSession = vi.fn();
   },
 }));
 
 const mockedProbePty = vi.mocked(probePty);
+const mockedPtySession = vi.mocked(PtySession);
+
+interface FakeSession {
+  isDead: boolean;
+  kill: ReturnType<typeof vi.fn>;
+  resize: ReturnType<typeof vi.fn>;
+  attach: ReturnType<typeof vi.fn>;
+  detach: ReturnType<typeof vi.fn>;
+  write: ReturnType<typeof vi.fn>;
+}
+
+function lastSession(): FakeSession {
+  const { instances } = mockedPtySession.mock;
+  const last = instances.at(-1);
+  if (!last) {
+    throw new Error('no PtySession was constructed');
+  }
+  return last as unknown as FakeSession;
+}
 
 function makePlugin(): TerminalPlugin {
   const plugin = new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
@@ -33,6 +66,7 @@ function makePlugin(): TerminalPlugin {
 beforeEach(() => {
   __resetObsidianMocks();
   mockedProbePty.mockReset();
+  mockedPtySession.mockClear();
 });
 
 describe('TerminalPlugin.loadSettings', () => {
@@ -129,13 +163,119 @@ describe('TerminalPlugin.refreshOpenViews', () => {
   });
 });
 
+describe('TerminalPlugin.getOrCreateSession', () => {
+  it('constructs a fresh PtySession the first time it is called', () => {
+    const plugin = makePlugin();
+    const session = plugin.getOrCreateSession(100, 30);
+    expect(mockedPtySession).toHaveBeenCalledTimes(1);
+    const [, options] = mockedPtySession.mock.calls[0] ?? [];
+    expect(options).toMatchObject({ cols: 100, rows: 30 });
+    expect(session).toBe(lastSession());
+  });
+
+  it('reuses an alive session and just resizes it', () => {
+    const plugin = makePlugin();
+    const first = plugin.getOrCreateSession(80, 24);
+    const second = plugin.getOrCreateSession(120, 40);
+    expect(mockedPtySession).toHaveBeenCalledTimes(1);
+    expect(second).toBe(first);
+    expect(lastSession().resize).toHaveBeenCalledWith(120, 40);
+  });
+
+  it('spawns a new session when the previous one is dead', () => {
+    const plugin = makePlugin();
+    const first = plugin.getOrCreateSession(80, 24) as unknown as FakeSession;
+    first.isDead = true;
+    const second = plugin.getOrCreateSession(80, 24);
+    expect(mockedPtySession).toHaveBeenCalledTimes(2);
+    expect(second).not.toBe(first);
+  });
+
+  it('passes shell overrides from settings through to the session', () => {
+    const plugin = makePlugin();
+    plugin.settings.shell.path = '/bin/bash';
+    plugin.settings.shell.args = ['-i'];
+    plugin.getOrCreateSession(80, 24);
+    const [, options] = mockedPtySession.mock.calls[0] ?? [];
+    expect(options).toMatchObject({ shell: '/bin/bash', shellArgs: ['-i'] });
+  });
+
+  it('omits shell overrides when the settings are empty', () => {
+    const plugin = makePlugin();
+    plugin.settings.shell = { path: '', args: [] };
+    plugin.getOrCreateSession(80, 24);
+    const [, options] = mockedPtySession.mock.calls[0] ?? [];
+    expect(options).toMatchObject({ shell: undefined, shellArgs: undefined });
+  });
+});
+
+describe('TerminalPlugin.restartSession', () => {
+  it('kills the current session and tells open views to reattach', () => {
+    const plugin = makePlugin();
+    plugin.getOrCreateSession(80, 24);
+    const killed = lastSession();
+    const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    leaf.view = view;
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+
+    plugin.restartSession();
+
+    expect(killed.kill).toHaveBeenCalled();
+    expect(view.reattachSession).toHaveBeenCalled();
+  });
+
+  it('is safe when no session is running', () => {
+    const plugin = makePlugin();
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
+    expect(() => plugin.restartSession()).not.toThrow();
+  });
+
+  it('ignores foreign views when restarting', () => {
+    const plugin = makePlugin();
+    plugin.getOrCreateSession(80, 24);
+    const leaf = new WorkspaceLeaf();
+    leaf.view = { render: vi.fn() };
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    expect(() => plugin.restartSession()).not.toThrow();
+  });
+});
+
+describe('TerminalPlugin.onunload', () => {
+  it('kills the running session', () => {
+    const plugin = makePlugin();
+    plugin.getOrCreateSession(80, 24);
+    const session = lastSession();
+    plugin.onunload();
+    expect(session.kill).toHaveBeenCalled();
+  });
+
+  it('is safe when no session is running', () => {
+    const plugin = makePlugin();
+    expect(() => plugin.onunload()).not.toThrow();
+  });
+});
+
+describe('restart-shell command', () => {
+  it('invokes restartSession', async () => {
+    const plugin = makePlugin();
+    await plugin.onload();
+    const spy = vi.spyOn(plugin, 'restartSession').mockReturnValue();
+    const cmd = plugin.__findCommand('restart-shell');
+    cmd?.callback?.();
+    expect(spy).toHaveBeenCalled();
+    plugin.onunload();
+  });
+});
+
 describe('TerminalPlugin.onload', () => {
-  it('registers the setting tab, the terminal view, and the open-shell and self-test commands', async () => {
+  it('registers the setting tab, the terminal view, and every command', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     expect(plugin.__settingTabs).toHaveLength(1);
     expect(plugin.__viewFactories.has(TERMINAL_VIEW_TYPE)).toBe(true);
     expect(plugin.__findCommand('open-shell')).toBeDefined();
+    expect(plugin.__findCommand('restart-shell')).toBeDefined();
     expect(plugin.__findCommand('run-self-test')).toBeDefined();
     plugin.onunload();
   });

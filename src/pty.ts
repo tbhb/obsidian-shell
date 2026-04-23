@@ -48,8 +48,18 @@ export interface PtySessionOptions {
   rows?: number;
 }
 
+// Cap buffered output so a detached session does not grow without bound.
+// ~200 KB is roughly 2,500 lines of 80-column output, plenty to reorient
+// the user on reattach without leaking memory.
+const MAX_BUFFER_BYTES = 200_000;
+
+export type PtyDataWriter = (data: string) => void;
+
 export class PtySession {
   private proc: NodePty.IPty;
+  private buffer = '';
+  private writer: PtyDataWriter | null = null;
+  private dead = false;
 
   constructor(plugin: Plugin, options: PtySessionOptions = {}) {
     const pty = loadNodePty(plugin);
@@ -67,26 +77,53 @@ export class PtySession {
       cwd,
       env: options.env ?? (process.env as { [key: string]: string }),
     });
+    this.proc.onData((data) => this.route(data));
+    this.proc.onExit(() => {
+      this.dead = true;
+      this.route('\r\n[process exited]\r\n');
+    });
   }
 
-  onData(cb: (data: string) => void): void {
-    this.proc.onData(cb);
+  get isDead(): boolean {
+    return this.dead;
   }
 
-  onExit(cb: (exitCode: number) => void): void {
-    this.proc.onExit(({ exitCode }) => cb(exitCode));
+  attach(writer: PtyDataWriter): void {
+    this.writer = writer;
+    if (this.buffer) {
+      writer(this.buffer);
+      this.buffer = '';
+    }
+  }
+
+  detach(): void {
+    this.writer = null;
   }
 
   write(data: string): void {
+    if (this.dead) return;
     this.proc.write(data);
   }
 
   resize(cols: number, rows: number): void {
+    if (this.dead) return;
     this.proc.resize(cols, rows);
   }
 
   kill(): void {
+    if (this.dead) return;
     this.proc.kill();
+  }
+
+  private route(data: string): void {
+    if (this.writer) {
+      this.writer(data);
+      return;
+    }
+    this.buffer += data;
+    if (this.buffer.length > MAX_BUFFER_BYTES) {
+      this.buffer = this.buffer.slice(-MAX_BUFFER_BYTES);
+    }
   }
 }
 

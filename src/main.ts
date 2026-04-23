@@ -1,5 +1,5 @@
 import { type FileSystemAdapter, Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
-import { probePty } from './pty';
+import { PtySession, probePty } from './pty';
 import {
   DEFAULT_SETTINGS,
   mergeSettings,
@@ -11,6 +11,7 @@ import { TERMINAL_VIEW_TYPE, TerminalView } from './view';
 
 export default class TerminalPlugin extends Plugin {
   settings: TerminalPluginSettings = DEFAULT_SETTINGS;
+  private ptySession: PtySession | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -22,13 +23,21 @@ export default class TerminalPlugin extends Plugin {
       callback: () => this.activateView(),
     });
     this.addCommand({
+      id: 'restart-shell',
+      name: 'Restart shell',
+      callback: () => this.restartSession(),
+    });
+    this.addCommand({
       id: 'run-self-test',
       name: 'Run self-test',
       callback: () => this.runPtySelfTest(),
     });
   }
 
-  onunload(): void {}
+  onunload(): void {
+    this.ptySession?.kill();
+    this.ptySession = null;
+  }
 
   onUserEnable(): void {
     void this.activateView();
@@ -77,6 +86,33 @@ export default class TerminalPlugin extends Plugin {
       }
     }
     return adapter.getBasePath();
+  }
+
+  getOrCreateSession(cols: number, rows: number): PtySession {
+    if (this.ptySession && !this.ptySession.isDead) {
+      this.ptySession.resize(cols, rows);
+      return this.ptySession;
+    }
+    const { shell } = this.settings;
+    this.ptySession = new PtySession(this, {
+      cwd: this.resolveCwd(),
+      shell: shell.path || undefined,
+      shellArgs: shell.args.length > 0 ? shell.args : undefined,
+      cols,
+      rows,
+    });
+    return this.ptySession;
+  }
+
+  restartSession(): void {
+    this.ptySession?.kill();
+    this.ptySession = null;
+    for (const leaf of this.app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof TerminalView) {
+        view.reattachSession();
+      }
+    }
   }
 
   refreshOpenViews(): void {

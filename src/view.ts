@@ -3,7 +3,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { type ITheme, Terminal } from '@xterm/xterm';
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import type TerminalPlugin from './main';
-import { PtySession } from './pty';
+import type { PtySession } from './pty';
 import type { TerminalPluginSettings } from './settings';
 
 export const TERMINAL_VIEW_TYPE = 'obsidian-terminal';
@@ -96,36 +96,46 @@ export class TerminalView extends ItemView {
       }
     });
 
-    const { cols, rows } = terminal;
-    const session = new PtySession(this.plugin, {
-      cols,
-      rows,
-      cwd: this.plugin.resolveCwd(),
-      shell: shell.path || undefined,
-      shellArgs: shell.args.length > 0 ? shell.args : undefined,
-    });
-
-    session.onData((data) => terminal.write(data));
-    terminal.onData((data) => session.write(data));
-    terminal.onResize(({ cols: c, rows: r }) => session.resize(c, r));
-    session.onExit(() => {
-      terminal.write('\r\n[process exited]\r\n');
-    });
-
     this.terminal = terminal;
     this.fitAddon = fitAddon;
     this.webglAddon = webglAddon;
-    this.session = session;
+
+    terminal.onData((data) => this.session?.write(data));
+    terminal.onResize(({ cols, rows }) => this.session?.resize(cols, rows));
+
+    this.bindSession();
   }
 
   async onClose(): Promise<void> {
-    this.session?.kill();
+    // The plugin owns the PtySession so it survives the view being torn down
+    // and recreated when the user drags the leaf into a different pane. Only
+    // the xterm instance and the writer binding go away here.
+    this.session?.detach();
     this.session = null;
     this.webglAddon?.dispose();
     this.webglAddon = null;
     this.terminal?.dispose();
     this.terminal = null;
     this.fitAddon = null;
+  }
+
+  reattachSession(): void {
+    if (!this.terminal) {
+      return;
+    }
+    this.session?.detach();
+    this.terminal.clear();
+    this.session = null;
+    this.bindSession();
+  }
+
+  private bindSession(): void {
+    if (!this.terminal) {
+      return;
+    }
+    const session = this.plugin.getOrCreateSession(this.terminal.cols, this.terminal.rows);
+    session.attach((data) => this.terminal?.write(data));
+    this.session = session;
   }
 
   onResize(): void {
