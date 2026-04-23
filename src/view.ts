@@ -158,6 +158,20 @@ export class TerminalView extends ItemView {
     terminal.onData((data) => this.session?.write(data));
     terminal.onResize(({ cols, rows }) => this.session?.resize(cols, rows));
 
+    // Obsidian does not guarantee setState fires before onOpen on freshly
+    // created views. Read the stored state from the leaf directly so
+    // bindSession does not spawn an orphan session that setState would
+    // then have to discard.
+    if (!this.sessionId) {
+      const state = this.leaf.getViewState()?.state;
+      if (state && typeof state === 'object') {
+        const id = (state as PersistedState).sessionId;
+        if (typeof id === 'string') {
+          this.sessionId = id;
+        }
+      }
+    }
+
     this.bindSession();
     this.focusTerminalIfActive();
   }

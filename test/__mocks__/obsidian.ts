@@ -906,6 +906,7 @@ export interface Editor {
 export class WorkspaceLeaf {
   view: unknown = null;
   setViewState = vi.fn(async (_state: unknown) => undefined);
+  getViewState = vi.fn(() => ({ type: '', state: {} as unknown }));
 }
 
 export class QueryController extends Component {}
