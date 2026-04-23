@@ -15,7 +15,7 @@ Push [conventional commits][conventional-commits] to `main`. release-please open
 ### Stable vs beta
 
 - **Stable release.** A normal `feat` or `fix` bump produces a tag like `1.2.0`. The GitHub release stays unmarked. Users pulling via the community catalog or via manual install see this release as the latest.
-- **Beta release.** Add a `Release-As: 1.2.0-beta.1` footer to a qualifying commit. release-please cuts a release at that exact version. GitHub flags the release as prerelease automatically because the version carries a prerelease qualifier. BRAT's beta-tester flow honors that flag, so opted-in users get the beta without any branch-level distinction.
+- **Beta release.** Add a `Release-As: 1.2.0-beta.1` footer to a qualifying commit. release-please cuts a release at that exact version. The package config sets `"prerelease": true`, so release-please flags the GitHub release as prerelease whenever the version carries a prerelease qualifier. Stable versions stay unflagged. BRAT's beta-tester flow honors that flag, so opted-in users get the beta without any branch-level distinction.
 
 Only `feat:`, `fix:`, and commits with breaking changes trigger a release PR on their own. `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:`, and `build:` commits land without opening one, unless they carry a `Release-As:` footer.
 
@@ -45,7 +45,9 @@ Per-platform natives produced by the build matrix:
 
 ## Workflow permissions
 
-The `release` workflow runs with the built-in `GITHUB_TOKEN` and the following scopes. No personal access tokens needed.
+The `release-please` job runs under a token minted from the `tbhb-releases` GitHub App. The workflow reads `RELEASE_BOT_APP_ID` as a repo variable and `RELEASE_BOT_PRIVATE_KEY` as a repo secret. An App-issued token bypasses GitHub's recursion-prevention rule, so the release PR push triggers CI, and it bypasses the first-time-contributor workflow-approval gate. The `publish-release` job still uses the built-in `GITHUB_TOKEN` for asset upload and sigstore OIDC.
+
+Workflow-level scopes:
 
 - `contents: write` for tagging, creating the release, and uploading assets
 - `pull-requests: write` for opening the release-please PR
