@@ -31,22 +31,35 @@ An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] an
 
 The plugin targets desktop Obsidian. The mobile app skips the plugin because node-pty can't load there.
 
-Clone the repository into a vault's plugin directory. Install dependencies. Compile the native module against Obsidian's Electron runtime. Then build the plugin:
+### Via BRAT
+
+[BRAT] offers the lowest-friction path while the plugin lives outside the community catalog. Open BRAT's "Add beta plugin" dialog and enter `tbhb/obsidian-shell`. BRAT downloads the latest release into `.obsidian/plugins/obsidian-shell/`, including the native binary for your platform. Enable `Shell` under **Settings → Community plugins**. The first enable opens a starter shell.
+
+BRAT also tracks the `beta` branch. Opt into beta releases from BRAT's settings to receive `*-beta.N` builds as they ship.
+
+### Manual install
+
+Grab the latest [release][releases] and copy these assets into `.obsidian/plugins/obsidian-shell/`, creating the folder first if it doesn't exist:
+
+- `main.js`
+- `manifest.json`
+- `styles.css`
+- `pty-<platform>-<arch>.node` matching your system, such as `pty-darwin-arm64.node` on Apple silicon or `pty-win32-x64.node` on 64-bit Windows
+- `spawn-helper-<platform>-<arch>` matching your system on macOS and Linux. Windows doesn't ship a spawn-helper
+
+On macOS and Linux, mark the spawn-helper executable:
 
 ```bash
-cd /path/to/vault/.obsidian/plugins
-git clone https://github.com/tbhb/obsidian-shell.git
-cd obsidian-shell
-pnpm install
-pnpm rebuild:native
-pnpm build
+chmod +x .obsidian/plugins/obsidian-shell/spawn-helper-*
 ```
 
-Then toggle `Terminal` on under **Settings → Community plugins**. The first enable opens a starter shell. Future reloads won't.
+Restart Obsidian or toggle community plugins off and on, then enable `Shell` under **Settings → Community plugins**.
 
-`pnpm rebuild:native` runs [`@electron/rebuild`][electron-rebuild] against Electron 39 headers and produces `node_modules/node-pty/build/Release/pty.node`. Re-run it any time node-pty bumps or the pinned Electron version changes.
+[releases]: https://github.com/tbhb/obsidian-shell/releases
 
-[electron-rebuild]: https://github.com/electron/rebuild
+### From source
+
+Contributors and anyone debugging a local build should follow the from-source setup in [`DEVELOPMENT.md`](DEVELOPMENT.md). That path compiles node-pty against Obsidian's Electron runtime via `pnpm rebuild:native`.
 
 ## Scripts
 
