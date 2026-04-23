@@ -76,9 +76,25 @@ export class TerminalView extends ItemView {
   }
 
   async setState(state: unknown, result: ViewStateResult): Promise<void> {
+    // Only update sessionId when it is explicitly provided as a string.
+    // Obsidian calls setState during workspace restore, layout operations,
+    // and internal setViewState calls that omit our state keys. The previous
+    // implementation clobbered a live binding to null in those cases, which
+    // caused the sidebar's "attached" leaves to look detached and
+    // switchToSession to fall through to opening a second view on the same
+    // session.
     if (state && typeof state === 'object') {
-      const { sessionId } = state as PersistedState;
-      this.sessionId = typeof sessionId === 'string' ? sessionId : null;
+      const next = (state as PersistedState).sessionId;
+      if (typeof next === 'string' && next !== this.sessionId) {
+        this.sessionId = next;
+        if (this.terminal) {
+          // setState arrived after onOpen with a new id — switch now.
+          this.session?.detach();
+          this.terminal.clear();
+          this.session = null;
+          this.bindSession();
+        }
+      }
     }
     return super.setState(state, result);
   }
