@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1-beta.2](https://github.com/tbhb/obsidian-shell/compare/0.1.1-beta.1...0.1.1-beta.2) (2026-04-23)
+
+
+### Miscellaneous Chores
+
+* validate release bot + prerelease config ([6e33c04](https://github.com/tbhb/obsidian-shell/commit/6e33c04d4e03e76742f05fb5b509f2f6d6114b75))
+
 ## [0.1.1-beta.1](https://github.com/tbhb/obsidian-shell/compare/0.1.0...0.1.1-beta.1) (2026-04-23)
 
 
