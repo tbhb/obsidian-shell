@@ -2,11 +2,11 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { type ITheme, Terminal } from '@xterm/xterm';
 import { ItemView, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
-import type TerminalPlugin from './main';
+import type ShellPlugin from './main';
 import type { PtySession } from './pty';
-import type { TerminalPluginSettings } from './settings';
+import type { ShellPluginSettings } from './settings';
 
-export const TERMINAL_VIEW_TYPE = 'obsidian-terminal';
+export const SHELL_VIEW_TYPE = 'obsidian-shell';
 
 const DEFAULT_DISPLAY_TEXT = 'Shell';
 
@@ -39,8 +39,8 @@ function resolveObsidianTheme(el: HTMLElement): ITheme {
   };
 }
 
-export class TerminalView extends ItemView {
-  private readonly plugin: TerminalPlugin;
+export class ShellView extends ItemView {
+  private readonly plugin: ShellPlugin;
   private terminal: Terminal | null = null;
   private fitAddon: FitAddon | null = null;
   private webglAddon: WebglAddon | null = null;
@@ -50,13 +50,13 @@ export class TerminalView extends ItemView {
   private sessionCreatedByThisView = false;
   private label: string = DEFAULT_DISPLAY_TEXT;
 
-  constructor(leaf: WorkspaceLeaf, plugin: TerminalPlugin) {
+  constructor(leaf: WorkspaceLeaf, plugin: ShellPlugin) {
     super(leaf);
     this.plugin = plugin;
   }
 
   getViewType(): string {
-    return TERMINAL_VIEW_TYPE;
+    return SHELL_VIEW_TYPE;
   }
 
   getDisplayText(): string {
@@ -105,7 +105,7 @@ export class TerminalView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.contentEl.empty();
-    this.contentEl.addClass('obsidian-terminal-host');
+    this.contentEl.addClass('obsidian-shell-host');
 
     const { appearance, behavior } = this.plugin.settings;
 
@@ -240,7 +240,7 @@ export class TerminalView extends ItemView {
     this.fitAddon?.fit();
   }
 
-  applySettings(settings: TerminalPluginSettings): void {
+  applySettings(settings: ShellPluginSettings): void {
     if (!this.terminal) {
       return;
     }
@@ -283,7 +283,7 @@ export class TerminalView extends ItemView {
     // Only steal focus when this view is already the active one. On startup
     // Obsidian re-opens every view, and we do not want to yank focus out of
     // whichever pane the user is working in.
-    if (this.app.workspace.getActiveViewOfType(TerminalView) !== this) {
+    if (this.app.workspace.getActiveViewOfType(ShellView) !== this) {
       return;
     }
     this.focusTerminal();

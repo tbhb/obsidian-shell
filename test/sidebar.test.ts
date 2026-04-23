@@ -1,7 +1,7 @@
 import { App, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionEntry } from '../src/main';
-import TerminalPlugin from '../src/main';
+import ShellPlugin from '../src/main';
 import { DEFAULT_SETTINGS } from '../src/settings';
 import { SHELLS_VIEW_TYPE, ShellsView } from '../src/sidebar';
 
@@ -22,8 +22,8 @@ vi.mock('../src/pty', () => {
 });
 
 vi.mock('../src/view', () => ({
-  TERMINAL_VIEW_TYPE: 'obsidian-terminal',
-  TerminalView: class {
+  SHELL_VIEW_TYPE: 'obsidian-shell',
+  ShellView: class {
     constructor(
       public leaf: unknown,
       public plugin: unknown,
@@ -36,8 +36,8 @@ vi.mock('../src/view', () => ({
   },
 }));
 
-function makePlugin(): TerminalPlugin {
-  const plugin = new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
+function makePlugin(): ShellPlugin {
+  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
   plugin.settings = structuredClone(DEFAULT_SETTINGS);
   return plugin;
 }
@@ -62,7 +62,7 @@ describe('ShellsView metadata', () => {
 });
 
 describe('ShellsView.render', () => {
-  let plugin: TerminalPlugin;
+  let plugin: ShellPlugin;
   let view: ShellsView;
 
   beforeEach(() => {
@@ -75,7 +75,7 @@ describe('ShellsView.render', () => {
   it('shows an empty state when there are no sessions', () => {
     vi.spyOn(plugin, 'listSessions').mockReturnValue([]);
     view.render();
-    const empty = view.contentEl.querySelector('.obsidian-terminal-shells-empty');
+    const empty = view.contentEl.querySelector('.obsidian-shell-list-empty');
     expect(empty?.textContent).toContain('No shells');
   });
 
@@ -86,9 +86,9 @@ describe('ShellsView.render', () => {
       entry.session.isDead ? 'exited' : 'detached',
     );
     view.render();
-    const rows = view.contentEl.querySelectorAll('.obsidian-terminal-shells-row');
+    const rows = view.contentEl.querySelectorAll('.obsidian-shell-list-row');
     expect(rows).toHaveLength(2);
-    expect(rows[0]?.querySelector('.obsidian-terminal-shells-label')?.textContent).toBe('Shell 1');
+    expect(rows[0]?.querySelector('.obsidian-shell-list-label')?.textContent).toBe('Shell 1');
     expect((rows[0] as HTMLElement | undefined)?.dataset.state).toBe('detached');
     expect((rows[1] as HTMLElement | undefined)?.dataset.state).toBe('exited');
   });
@@ -99,7 +99,7 @@ describe('ShellsView.render', () => {
     vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
     const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
     view.render();
-    const row = view.contentEl.querySelector('.obsidian-terminal-shells-row') as HTMLElement;
+    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
     row.click();
     expect(switchSpy).toHaveBeenCalledWith(entry.id);
   });
@@ -110,7 +110,7 @@ describe('ShellsView.render', () => {
     vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
     const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
     view.render();
-    const row = view.contentEl.querySelector('.obsidian-terminal-shells-row') as HTMLElement;
+    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
     row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(switchSpy).toHaveBeenCalledWith(entry.id);
   });
@@ -121,7 +121,7 @@ describe('ShellsView.render', () => {
     vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
     const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
     view.render();
-    const row = view.contentEl.querySelector('.obsidian-terminal-shells-row') as HTMLElement;
+    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
     row.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     expect(switchSpy).toHaveBeenCalledWith(entry.id);
   });
@@ -132,7 +132,7 @@ describe('ShellsView.render', () => {
     vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
     const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
     view.render();
-    const row = view.contentEl.querySelector('.obsidian-terminal-shells-row') as HTMLElement;
+    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
     row.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
     expect(switchSpy).not.toHaveBeenCalled();
   });
@@ -144,9 +144,7 @@ describe('ShellsView.render', () => {
     const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
     const killSpy = vi.spyOn(plugin, 'killSession').mockReturnValue();
     view.render();
-    const killBtn = view.contentEl.querySelector(
-      '.obsidian-terminal-shells-kill',
-    ) as HTMLButtonElement;
+    const killBtn = view.contentEl.querySelector('.obsidian-shell-list-kill') as HTMLButtonElement;
     killBtn.click();
     expect(killSpy).toHaveBeenCalledWith(entry.id);
     expect(switchSpy).not.toHaveBeenCalled();
@@ -154,7 +152,7 @@ describe('ShellsView.render', () => {
 });
 
 describe('ShellsView lifecycle', () => {
-  let plugin: TerminalPlugin;
+  let plugin: ShellPlugin;
   let view: ShellsView;
 
   beforeEach(() => {
@@ -167,7 +165,7 @@ describe('ShellsView lifecycle', () => {
     const subscribeSpy = vi.spyOn(plugin, 'onSessionsChanged');
     await view.onOpen();
     expect(subscribeSpy).toHaveBeenCalled();
-    expect(view.contentEl.classList.contains('obsidian-terminal-shells-panel')).toBe(true);
+    expect(view.contentEl.classList.contains('obsidian-shell-list-panel')).toBe(true);
   });
 
   it('onClose unsubscribes from the plugin', async () => {

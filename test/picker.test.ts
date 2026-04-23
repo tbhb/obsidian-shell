@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionEntry } from '../src/main';
-import TerminalPlugin from '../src/main';
+import ShellPlugin from '../src/main';
 import { ShellPickerModal } from '../src/picker';
 import { DEFAULT_SETTINGS } from '../src/settings';
 
@@ -22,8 +22,8 @@ vi.mock('../src/pty', () => {
 });
 
 vi.mock('../src/view', () => ({
-  TERMINAL_VIEW_TYPE: 'obsidian-terminal',
-  TerminalView: class {
+  SHELL_VIEW_TYPE: 'obsidian-shell',
+  ShellView: class {
     constructor(
       public leaf: unknown,
       public plugin: unknown,
@@ -36,8 +36,8 @@ vi.mock('../src/view', () => ({
   },
 }));
 
-function makePlugin(): TerminalPlugin {
-  const plugin = new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
+function makePlugin(): ShellPlugin {
+  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
   plugin.settings = structuredClone(DEFAULT_SETTINGS);
   return plugin;
 }
@@ -51,7 +51,7 @@ function makeEntry(label: string, isDead = false): SessionEntry {
 }
 
 describe('ShellPickerModal', () => {
-  let plugin: TerminalPlugin;
+  let plugin: ShellPlugin;
   let modal: ShellPickerModal;
 
   beforeEach(() => {

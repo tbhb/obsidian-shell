@@ -12,7 +12,7 @@ type ElectronRequire = (id: string) => unknown;
 function getElectronRequire(): ElectronRequire {
   const win = window as typeof globalThis & { require?: ElectronRequire };
   if (typeof win.require !== 'function') {
-    throw new Error('obsidian-terminal requires desktop Obsidian (window.require unavailable)');
+    throw new Error('obsidian-shell requires desktop Obsidian (window.require unavailable)');
   }
   return win.require;
 }
@@ -20,7 +20,7 @@ function getElectronRequire(): ElectronRequire {
 function getPluginDir(plugin: Plugin): string {
   const adapter = plugin.app.vault.adapter as FileSystemAdapter;
   if (typeof adapter.getFullPath !== 'function') {
-    throw new Error('obsidian-terminal requires a filesystem vault');
+    throw new Error('obsidian-shell requires a filesystem vault');
   }
   const relDir = plugin.manifest.dir ?? `.obsidian/plugins/${plugin.manifest.id}`;
   return adapter.getFullPath(relDir);
@@ -29,7 +29,7 @@ function getPluginDir(plugin: Plugin): string {
 function getVaultPath(plugin: Plugin): string {
   const adapter = plugin.app.vault.adapter as FileSystemAdapter;
   if (typeof adapter.getBasePath !== 'function') {
-    throw new Error('obsidian-terminal requires a filesystem vault');
+    throw new Error('obsidian-shell requires a filesystem vault');
   }
   return adapter.getBasePath();
 }

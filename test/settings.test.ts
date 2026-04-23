@@ -9,17 +9,17 @@ import {
   type ToggleComponent,
 } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import TerminalPlugin from '../src/main';
+import ShellPlugin from '../src/main';
 import {
   DEFAULT_SETTINGS,
   detectMonospaceFonts,
   mergeSettings,
-  TerminalSettingTab,
+  ShellSettingTab,
 } from '../src/settings';
 
 vi.mock('../src/view', () => ({
-  TERMINAL_VIEW_TYPE: 'obsidian-terminal',
-  TerminalView: class {
+  SHELL_VIEW_TYPE: 'obsidian-shell',
+  ShellView: class {
     constructor(
       public leaf: unknown,
       public plugin: unknown,
@@ -95,16 +95,16 @@ describe('detectMonospaceFonts', () => {
   });
 });
 
-describe('TerminalSettingTab.display', () => {
-  let plugin: TerminalPlugin;
-  let tab: TerminalSettingTab;
+describe('ShellSettingTab.display', () => {
+  let plugin: ShellPlugin;
+  let tab: ShellSettingTab;
 
   beforeEach(() => {
     __resetObsidianMocks();
-    plugin = new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
+    plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
     plugin.settings = structuredClone(DEFAULT_SETTINGS);
     plugin.saveData = vi.fn();
-    tab = new TerminalSettingTab(plugin.app, plugin);
+    tab = new ShellSettingTab(plugin.app, plugin);
   });
 
   function currentSettings(): Setting[] {
@@ -132,7 +132,7 @@ describe('TerminalSettingTab.display', () => {
     tab.display();
     const headings = currentSettings().filter((s) => s.heading);
     expect(headings.map((h) => h.name)).toEqual([
-      'Shell',
+      'Executable',
       'Working directory',
       'Appearance',
       'Behavior',

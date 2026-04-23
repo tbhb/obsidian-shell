@@ -1,6 +1,6 @@
 # Development guide
 
-A walkthrough for humans contributing to `obsidian-terminal`. For the short version aimed at AI coding agents, see [`AGENTS.md`](AGENTS.md).
+A walkthrough for humans contributing to `obsidian-shell`. For the short version aimed at AI coding agents, see [`AGENTS.md`](AGENTS.md).
 
 ## Prerequisites
 
@@ -33,8 +33,8 @@ Clone the repository into any Obsidian vault's plugins directory and install dep
 
 ```bash
 cd /path/to/vault/.obsidian/plugins
-git clone https://github.com/tbhb/obsidian-terminal.git
-cd obsidian-terminal
+git clone https://github.com/tbhb/obsidian-shell.git
+cd obsidian-shell
 pnpm install
 pnpm rebuild:native
 pnpm build
@@ -50,7 +50,7 @@ Before the first run, sync Vale's style packages:
 pnpm vale:sync
 ```
 
-That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/obsidian-terminal/` and the vocabulary under `.vale/config/vocabularies/obsidian-terminal/` stay committed.
+That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/obsidian-shell/` and the vocabulary under `.vale/config/vocabularies/obsidian-shell/` stay committed.
 
 ## Development loop
 
@@ -115,7 +115,7 @@ Each `lint:*` script runs a single tool. Check `package.json` for the full list.
 - **Biome complains about formatting.** Run `pnpm format`. Biome handles indentation, quote style, trailing commas, and import sort automatically.
 - **ESLint flags an Obsidian rule.** Read the rule name, then jump to `eslint-plugin-obsidianmd` docs. Common ones: sentence-case UI strings, no `innerHTML`, no plugin name inside a command label.
 - **rumdl reports `MD040` missing language.** Add a language hint after the opening triple backticks. Use `text` for plain output.
-- **vale reports unknown words.** Add the term to `.vale/config/vocabularies/obsidian-terminal/accept.txt`. The file accepts one regular expression per line.
+- **vale reports unknown words.** Add the term to `.vale/config/vocabularies/obsidian-shell/accept.txt`. The file accepts one regular expression per line.
 - **cspell reports unknown words.** Add them to `cspell-words.txt`, one per line.
 - **yamllint reports a long line.** Break the value across lines with a folded scalar, or add `# yamllint disable-line rule:line-length` at the end of the line.
 - **actionlint reports a shellcheck issue.** Most of these flag unquoted variables. Fix them in place.
@@ -138,8 +138,8 @@ Tests that import `../src/main` transitively pull in `../src/view`, which import
 
 ```ts
 vi.mock('../src/view', () => ({
-  TERMINAL_VIEW_TYPE: 'obsidian-terminal',
-  TerminalView: class {
+  SHELL_VIEW_TYPE: 'obsidian-shell',
+  ShellView: class {
     constructor(public leaf: unknown, public plugin: unknown) {}
     applySettings = vi.fn();
     reattachSession = vi.fn();
@@ -209,8 +209,8 @@ Pushes to the `beta` branch run the same flow through `.github/release-please-co
 Anyone can verify that a release asset came from the workflow on `main`:
 
 ```bash
-gh release download 1.2.0 -R tbhb/obsidian-terminal -p 'main.js'
-gh attestation verify main.js --repo tbhb/obsidian-terminal
+gh release download 1.2.0 -R tbhb/obsidian-shell -p 'main.js'
+gh attestation verify main.js --repo tbhb/obsidian-shell
 ```
 
 A clean exit means sigstore confirms the asset matches the one the release workflow signed, with the OIDC identity tracing back to the exact workflow run on a GitHub-hosted runner.
@@ -247,7 +247,7 @@ Run `pnpm run prepare` to regenerate the `.husky/_` wrapper directory.
 
 ### `vale` complains about unknown words
 
-Extend `.vale/config/vocabularies/obsidian-terminal/accept.txt`. That file takes one regular expression per line. Prefer spelling out proper names in full and reach for a broad pattern like `[A-Z]{2,}` only as a last resort.
+Extend `.vale/config/vocabularies/obsidian-shell/accept.txt`. That file takes one regular expression per line. Prefer spelling out proper names in full and reach for a broad pattern like `[A-Z]{2,}` only as a last resort.
 
 ### CI fails on a rumdl rule for `CHANGELOG.md`
 

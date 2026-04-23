@@ -7,15 +7,15 @@
 node_modules
 
 # Vale: ignore downloaded style packages, keep the project-specific style
-# and vocabulary (these live under .vale/obsidian-terminal/ and
-# .vale/config/vocabularies/obsidian-terminal/).
+# and vocabulary (these live under .vale/obsidian-shell/ and
+# .vale/config/vocabularies/obsidian-shell/).
 /.vale/*
-!/.vale/obsidian-terminal/
+!/.vale/obsidian-shell/
 !/.vale/config/
 /.vale/config/*
 !/.vale/config/vocabularies/
 /.vale/config/vocabularies/*
-!/.vale/config/vocabularies/obsidian-terminal/
+!/.vale/config/vocabularies/obsidian-shell/
 
 # build output (published via GitHub releases, not committed).
 # Anchored to repo root so they don't shadow `src/styles.css` etc.

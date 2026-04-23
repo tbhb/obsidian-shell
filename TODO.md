@@ -1,6 +1,6 @@
 # TODO
 
-Running backlog for `obsidian-terminal`. Groups sorted roughly by urgency. Order inside each group stays free-form. Drop or check off as they land.
+Running backlog for `obsidian-shell`. Groups sorted roughly by urgency. Order inside each group stays free-form. Drop or check off as they land.
 
 ## Distribution
 

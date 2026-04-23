@@ -1,10 +1,10 @@
 import { type App, PluginSettingTab, Setting } from 'obsidian';
-import type TerminalPlugin from './main';
+import type ShellPlugin from './main';
 
 export type CwdStrategy = 'vault-root' | 'note-dir' | 'fixed-path';
 export type CursorStyle = 'block' | 'bar' | 'underline';
 
-export interface TerminalPluginSettings {
+export interface ShellPluginSettings {
   shell: {
     path: string;
     args: string[];
@@ -27,7 +27,7 @@ export interface TerminalPluginSettings {
   };
 }
 
-export const DEFAULT_SETTINGS: TerminalPluginSettings = {
+export const DEFAULT_SETTINGS: ShellPluginSettings = {
   shell: {
     path: '',
     args: ['-l'],
@@ -51,13 +51,13 @@ export const DEFAULT_SETTINGS: TerminalPluginSettings = {
 };
 
 type PartialSettings = {
-  shell?: Partial<TerminalPluginSettings['shell']>;
-  cwd?: Partial<TerminalPluginSettings['cwd']>;
-  appearance?: Partial<TerminalPluginSettings['appearance']>;
-  behavior?: Partial<TerminalPluginSettings['behavior']>;
+  shell?: Partial<ShellPluginSettings['shell']>;
+  cwd?: Partial<ShellPluginSettings['cwd']>;
+  appearance?: Partial<ShellPluginSettings['appearance']>;
+  behavior?: Partial<ShellPluginSettings['behavior']>;
 };
 
-export function mergeSettings(stored: PartialSettings | null | undefined): TerminalPluginSettings {
+export function mergeSettings(stored: PartialSettings | null | undefined): ShellPluginSettings {
   const s = stored ?? {};
   return {
     shell: { ...DEFAULT_SETTINGS.shell, ...s.shell },
@@ -107,11 +107,11 @@ export function detectMonospaceFonts(fontFaceSet: FontFaceSet | null | undefined
   return MONOSPACE_FONT_CANDIDATES.filter((f) => fontFaceSet.check(`12px "${f}"`));
 }
 
-export class TerminalSettingTab extends PluginSettingTab {
-  private readonly plugin: TerminalPlugin;
+export class ShellSettingTab extends PluginSettingTab {
+  private readonly plugin: ShellPlugin;
   private customFontMode = false;
 
-  constructor(app: App, plugin: TerminalPlugin) {
+  constructor(app: App, plugin: ShellPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -120,7 +120,7 @@ export class TerminalSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName('Shell').setHeading();
+    new Setting(containerEl).setName('Executable').setHeading();
 
     new Setting(containerEl)
       .setName('Shell path')

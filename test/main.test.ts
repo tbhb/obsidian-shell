@@ -1,9 +1,9 @@
 import { __getNotices, __resetObsidianMocks, App, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import TerminalPlugin from '../src/main';
+import ShellPlugin from '../src/main';
 import { PtySession, probePty } from '../src/pty';
 import { DEFAULT_SETTINGS } from '../src/settings';
-import { TERMINAL_VIEW_TYPE, TerminalView } from '../src/view';
+import { SHELL_VIEW_TYPE, ShellView } from '../src/view';
 
 vi.mock('../src/pty', () => {
   const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
@@ -26,8 +26,8 @@ vi.mock('../src/pty', () => {
 // The real src/view.ts pulls in @xterm/xterm, which touches the DOM at
 // construction time. Tests only need the module symbols; mock them.
 vi.mock('../src/view', () => ({
-  TERMINAL_VIEW_TYPE: 'obsidian-terminal',
-  TerminalView: class {
+  SHELL_VIEW_TYPE: 'obsidian-shell',
+  ShellView: class {
     constructor(
       public leaf: unknown,
       public plugin: unknown,
@@ -61,8 +61,8 @@ function lastSession(): FakeSession {
   return last as unknown as FakeSession;
 }
 
-function makePlugin(): TerminalPlugin {
-  const plugin = new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
+function makePlugin(): ShellPlugin {
+  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
   plugin.settings = structuredClone(DEFAULT_SETTINGS);
   return plugin;
 }
@@ -73,7 +73,7 @@ beforeEach(() => {
   mockedPtySession.mockClear();
 });
 
-describe('TerminalPlugin.loadSettings', () => {
+describe('ShellPlugin.loadSettings', () => {
   it('falls back to defaults when loadData returns null', async () => {
     const plugin = makePlugin();
     plugin.loadData = vi.fn(async () => null);
@@ -89,7 +89,7 @@ describe('TerminalPlugin.loadSettings', () => {
   });
 });
 
-describe('TerminalPlugin.saveSettings', () => {
+describe('ShellPlugin.saveSettings', () => {
   it('persists the current settings via saveData and refreshes open views', async () => {
     const plugin = makePlugin();
     plugin.saveData = vi.fn();
@@ -100,7 +100,7 @@ describe('TerminalPlugin.saveSettings', () => {
   });
 });
 
-describe('TerminalPlugin.resolveCwd', () => {
+describe('ShellPlugin.resolveCwd', () => {
   it('returns the vault base path for vault-root', () => {
     const plugin = makePlugin();
     plugin.settings.cwd.strategy = 'vault-root';
@@ -147,11 +147,11 @@ describe('TerminalPlugin.resolveCwd', () => {
   });
 });
 
-describe('TerminalPlugin.refreshOpenViews', () => {
-  it('applies settings to every matching TerminalView leaf', () => {
+describe('ShellPlugin.refreshOpenViews', () => {
+  it('applies settings to every matching ShellView leaf', () => {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     leaf.view = view;
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
     plugin.refreshOpenViews();
@@ -167,7 +167,7 @@ describe('TerminalPlugin.refreshOpenViews', () => {
   });
 });
 
-describe('TerminalPlugin.createSession', () => {
+describe('ShellPlugin.createSession', () => {
   it('constructs a PtySession with sequential shell-N ids and Shell N labels', () => {
     const plugin = makePlugin();
     const first = plugin.createSession(100, 30);
@@ -197,7 +197,7 @@ describe('TerminalPlugin.createSession', () => {
   });
 });
 
-describe('TerminalPlugin.getSession', () => {
+describe('ShellPlugin.getSession', () => {
   it('returns the entry when the session is alive', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
@@ -217,7 +217,7 @@ describe('TerminalPlugin.getSession', () => {
   });
 });
 
-describe('TerminalPlugin.listSessions', () => {
+describe('ShellPlugin.listSessions', () => {
   it('returns an empty array when no sessions have been created', () => {
     const plugin = makePlugin();
     expect(plugin.listSessions()).toEqual([]);
@@ -231,12 +231,12 @@ describe('TerminalPlugin.listSessions', () => {
   });
 });
 
-describe('TerminalPlugin.isSessionAttached', () => {
-  it('returns true when a TerminalView leaf hosts the given id', () => {
+describe('ShellPlugin.isSessionAttached', () => {
+  it('returns true when a ShellView leaf hosts the given id', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue(entry.id);
     leaf.view = view;
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
@@ -247,14 +247,14 @@ describe('TerminalPlugin.isSessionAttached', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue('shell-99');
     leaf.view = view;
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
     expect(plugin.isSessionAttached(entry.id)).toBe(false);
   });
 
-  it('ignores leaves whose view is not a TerminalView', () => {
+  it('ignores leaves whose view is not a ShellView', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const leaf = new WorkspaceLeaf();
@@ -264,7 +264,7 @@ describe('TerminalPlugin.isSessionAttached', () => {
   });
 });
 
-describe('TerminalPlugin.describeSessionState', () => {
+describe('ShellPlugin.describeSessionState', () => {
   it('returns exited when the session is dead', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
@@ -272,11 +272,11 @@ describe('TerminalPlugin.describeSessionState', () => {
     expect(plugin.describeSessionState(entry)).toBe('exited');
   });
 
-  it('returns attached when a TerminalView leaf hosts the session', () => {
+  it('returns attached when a ShellView leaf hosts the session', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue(entry.id);
     leaf.view = view;
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
@@ -290,7 +290,7 @@ describe('TerminalPlugin.describeSessionState', () => {
   });
 });
 
-describe('TerminalPlugin.activateShellsView', () => {
+describe('ShellPlugin.activateShellsView', () => {
   it('reveals an existing shells-view leaf', async () => {
     const plugin = makePlugin();
     const existing = new WorkspaceLeaf();
@@ -307,7 +307,7 @@ describe('TerminalPlugin.activateShellsView', () => {
     vi.spyOn(plugin.app.workspace, 'getLeftLeaf').mockReturnValue(leaf);
     await plugin.activateShellsView();
     expect(leaf.setViewState).toHaveBeenCalledWith({
-      type: 'obsidian-terminal-shells',
+      type: 'obsidian-shell-list',
       active: true,
     });
   });
@@ -322,7 +322,7 @@ describe('TerminalPlugin.activateShellsView', () => {
   });
 });
 
-describe('TerminalPlugin.onSessionsChanged', () => {
+describe('ShellPlugin.onSessionsChanged', () => {
   it('fires listeners when sessions are created, killed, or killed all', () => {
     const plugin = makePlugin();
     const listener = vi.fn();
@@ -367,14 +367,14 @@ describe('TerminalPlugin.onSessionsChanged', () => {
   });
 });
 
-describe('TerminalPlugin.openShellPicker', () => {
+describe('ShellPlugin.openShellPicker', () => {
   it('opens a ShellPickerModal instance', () => {
     const plugin = makePlugin();
     expect(() => plugin.openShellPicker()).not.toThrow();
   });
 });
 
-describe('TerminalPlugin.switchToSession', () => {
+describe('ShellPlugin.switchToSession', () => {
   it('shows a notice when the id is unknown', async () => {
     const plugin = makePlugin();
     await plugin.switchToSession('shell-99');
@@ -385,7 +385,7 @@ describe('TerminalPlugin.switchToSession', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue(entry.id);
     leaf.view = view;
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
@@ -395,11 +395,11 @@ describe('TerminalPlugin.switchToSession', () => {
     expect(view.focusTerminal).toHaveBeenCalled();
   });
 
-  it('attaches the active TerminalView to the chosen session when no other leaf hosts it', async () => {
+  it('attaches the active ShellView to the chosen session when no other leaf hosts it', async () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const activeLeaf = new WorkspaceLeaf();
-    const activeView = new TerminalView(activeLeaf as never, plugin as never);
+    const activeView = new ShellView(activeLeaf as never, plugin as never);
     activeView.getSessionId = vi.fn().mockReturnValue('shell-99');
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(activeView);
@@ -411,7 +411,7 @@ describe('TerminalPlugin.switchToSession', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const otherLeaf = new WorkspaceLeaf();
-    const otherView = new TerminalView(otherLeaf as never, plugin as never);
+    const otherView = new ShellView(otherLeaf as never, plugin as never);
     otherView.getSessionId = vi.fn().mockReturnValue('shell-99');
     otherLeaf.view = otherView;
     const foreignLeaf = new WorkspaceLeaf();
@@ -430,14 +430,14 @@ describe('TerminalPlugin.switchToSession', () => {
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(null);
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     leaf.view = view;
     const getLeafSpy = vi.spyOn(plugin.app.workspace, 'getLeaf').mockReturnValue(leaf);
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.switchToSession(entry.id);
     expect(getLeafSpy).toHaveBeenCalledWith('tab');
     expect(leaf.setViewState).toHaveBeenCalledWith({
-      type: TERMINAL_VIEW_TYPE,
+      type: SHELL_VIEW_TYPE,
       active: true,
       state: { sessionId: entry.id },
     });
@@ -446,7 +446,7 @@ describe('TerminalPlugin.switchToSession', () => {
   });
 });
 
-describe('TerminalPlugin.killSession', () => {
+describe('ShellPlugin.killSession', () => {
   it('kills the session and drops it from the map', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
@@ -462,7 +462,7 @@ describe('TerminalPlugin.killSession', () => {
   });
 });
 
-describe('TerminalPlugin.killAllSessions', () => {
+describe('ShellPlugin.killAllSessions', () => {
   it('kills every tracked session and clears the map', () => {
     const plugin = makePlugin();
     const a = plugin.createSession(80, 24);
@@ -480,7 +480,7 @@ describe('TerminalPlugin.killAllSessions', () => {
   });
 });
 
-describe('TerminalPlugin.newShell', () => {
+describe('ShellPlugin.newShell', () => {
   it('creates a new tab leaf and opens a terminal view in it', async () => {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
@@ -488,17 +488,17 @@ describe('TerminalPlugin.newShell', () => {
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.newShell();
     expect(getLeafSpy).toHaveBeenCalledWith('tab');
-    expect(leaf.setViewState).toHaveBeenCalledWith({ type: TERMINAL_VIEW_TYPE, active: true });
+    expect(leaf.setViewState).toHaveBeenCalledWith({ type: SHELL_VIEW_TYPE, active: true });
     expect(reveal).toHaveBeenCalledWith(leaf);
   });
 });
 
-describe('TerminalPlugin.killActiveShell', () => {
+describe('ShellPlugin.killActiveShell', () => {
   it('kills the active shell when a terminal view is focused', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue(entry.id);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
     plugin.killActiveShell();
@@ -515,18 +515,18 @@ describe('TerminalPlugin.killActiveShell', () => {
   it('does nothing when the active view has no session id', () => {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue(null);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
     expect(() => plugin.killActiveShell()).not.toThrow();
   });
 });
 
-describe('TerminalPlugin.restartActiveShell', () => {
+describe('ShellPlugin.restartActiveShell', () => {
   it('tells the active view to reattach', () => {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
-    const view = new TerminalView(leaf as never, plugin as never);
+    const view = new ShellView(leaf as never, plugin as never);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
     plugin.restartActiveShell();
     expect(view.reattachSession).toHaveBeenCalled();
@@ -540,7 +540,7 @@ describe('TerminalPlugin.restartActiveShell', () => {
   });
 });
 
-describe('TerminalPlugin.onunload', () => {
+describe('ShellPlugin.onunload', () => {
   it('kills every session', () => {
     const plugin = makePlugin();
     const a = plugin.createSession(80, 24);
@@ -556,29 +556,29 @@ describe('TerminalPlugin.onunload', () => {
   });
 });
 
-describe('TerminalPlugin.onload', () => {
+describe('ShellPlugin.onload', () => {
   it('registers the setting tab, both views, ribbon icon, and every command', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     expect(plugin.__settingTabs).toHaveLength(1);
-    expect(plugin.__viewFactories.has(TERMINAL_VIEW_TYPE)).toBe(true);
-    expect(plugin.__viewFactories.has('obsidian-terminal-shells')).toBe(true);
+    expect(plugin.__viewFactories.has(SHELL_VIEW_TYPE)).toBe(true);
+    expect(plugin.__viewFactories.has('obsidian-shell-list')).toBe(true);
     expect(plugin.__ribbonIcons.map((r) => r.icon)).toContain('terminal-square');
-    expect(plugin.__findCommand('open-shell')).toBeDefined();
-    expect(plugin.__findCommand('new-shell')).toBeDefined();
-    expect(plugin.__findCommand('kill-shell')).toBeDefined();
-    expect(plugin.__findCommand('restart-shell')).toBeDefined();
-    expect(plugin.__findCommand('kill-all-shells')).toBeDefined();
-    expect(plugin.__findCommand('switch-shell')).toBeDefined();
-    expect(plugin.__findCommand('open-shells-sidebar')).toBeDefined();
+    expect(plugin.__findCommand('open')).toBeDefined();
+    expect(plugin.__findCommand('new')).toBeDefined();
+    expect(plugin.__findCommand('kill')).toBeDefined();
+    expect(plugin.__findCommand('restart')).toBeDefined();
+    expect(plugin.__findCommand('kill-all')).toBeDefined();
+    expect(plugin.__findCommand('switch')).toBeDefined();
+    expect(plugin.__findCommand('open-sidebar')).toBeDefined();
     expect(plugin.__findCommand('run-self-test')).toBeDefined();
     plugin.onunload();
   });
 
-  it('constructs a TerminalView through the registered factory', async () => {
+  it('constructs a ShellView through the registered factory', async () => {
     const plugin = makePlugin();
     await plugin.onload();
-    const factory = plugin.__viewFactories.get(TERMINAL_VIEW_TYPE);
+    const factory = plugin.__viewFactories.get(SHELL_VIEW_TYPE);
     expect(factory).toBeDefined();
     const leaf = new WorkspaceLeaf();
     expect(() => factory?.(leaf)).not.toThrow();
@@ -588,7 +588,7 @@ describe('TerminalPlugin.onload', () => {
   it('constructs a ShellsView through the registered factory', async () => {
     const plugin = makePlugin();
     await plugin.onload();
-    const factory = plugin.__viewFactories.get('obsidian-terminal-shells');
+    const factory = plugin.__viewFactories.get('obsidian-shell-list');
     expect(factory).toBeDefined();
     const leaf = new WorkspaceLeaf();
     expect(() => factory?.(leaf)).not.toThrow();
@@ -596,7 +596,7 @@ describe('TerminalPlugin.onload', () => {
   });
 });
 
-describe('TerminalPlugin.onExternalSettingsChange', () => {
+describe('ShellPlugin.onExternalSettingsChange', () => {
   it('reloads settings and refreshes open views', async () => {
     const plugin = makePlugin();
     plugin.loadData = vi.fn(async () => null);
@@ -607,7 +607,7 @@ describe('TerminalPlugin.onExternalSettingsChange', () => {
   });
 });
 
-describe('TerminalPlugin.activateView', () => {
+describe('ShellPlugin.activateView', () => {
   it('reveals the existing leaf when one is already open', async () => {
     const plugin = makePlugin();
     const existing = new WorkspaceLeaf();
@@ -625,7 +625,7 @@ describe('TerminalPlugin.activateView', () => {
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.activateView();
     expect(leaf.setViewState).toHaveBeenCalledWith({
-      type: TERMINAL_VIEW_TYPE,
+      type: SHELL_VIEW_TYPE,
       active: true,
     });
     expect(reveal).toHaveBeenCalledWith(leaf);
@@ -641,7 +641,7 @@ describe('TerminalPlugin.activateView', () => {
   });
 });
 
-describe('TerminalPlugin.onUserEnable', () => {
+describe('ShellPlugin.onUserEnable', () => {
   it('activates the view when no plugin data exists yet', async () => {
     const plugin = makePlugin();
     plugin.loadData = vi.fn(async () => null);
@@ -667,65 +667,65 @@ describe('TerminalPlugin.onUserEnable', () => {
 });
 
 describe('shell commands wiring', () => {
-  it('open-shell calls activateView', async () => {
+  it('open calls activateView', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'activateView').mockResolvedValue();
-    await plugin.__findCommand('open-shell')?.callback?.();
+    await plugin.__findCommand('open')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
 
-  it('new-shell calls newShell', async () => {
+  it('new calls newShell', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'newShell').mockResolvedValue();
-    await plugin.__findCommand('new-shell')?.callback?.();
+    await plugin.__findCommand('new')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
 
-  it('kill-shell calls killActiveShell', async () => {
+  it('kill calls killActiveShell', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'killActiveShell').mockReturnValue();
-    plugin.__findCommand('kill-shell')?.callback?.();
+    plugin.__findCommand('kill')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
 
-  it('restart-shell calls restartActiveShell', async () => {
+  it('restart calls restartActiveShell', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'restartActiveShell').mockReturnValue();
-    plugin.__findCommand('restart-shell')?.callback?.();
+    plugin.__findCommand('restart')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
 
-  it('kill-all-shells calls killAllSessions', async () => {
+  it('kill-all calls killAllSessions', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'killAllSessions').mockReturnValue();
-    plugin.__findCommand('kill-all-shells')?.callback?.();
+    plugin.__findCommand('kill-all')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
 
-  it('switch-shell calls openShellPicker', async () => {
+  it('switch calls openShellPicker', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'openShellPicker').mockReturnValue();
-    plugin.__findCommand('switch-shell')?.callback?.();
+    plugin.__findCommand('switch')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
 
-  it('open-shells-sidebar calls activateShellsView', async () => {
+  it('open-sidebar calls activateShellsView', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'activateShellsView').mockResolvedValue();
-    plugin.__findCommand('open-shells-sidebar')?.callback?.();
+    plugin.__findCommand('open-sidebar')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });

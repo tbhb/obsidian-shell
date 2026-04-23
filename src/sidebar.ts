@@ -1,8 +1,8 @@
 import { ItemView, setIcon, type WorkspaceLeaf } from 'obsidian';
-import type TerminalPlugin from './main';
+import type ShellPlugin from './main';
 import type { SessionEntry, SessionState } from './main';
 
-export const SHELLS_VIEW_TYPE = 'obsidian-terminal-shells';
+export const SHELLS_VIEW_TYPE = 'obsidian-shell-list';
 
 const STATE_LABEL: Record<SessionState, string> = {
   attached: 'attached',
@@ -11,10 +11,10 @@ const STATE_LABEL: Record<SessionState, string> = {
 };
 
 export class ShellsView extends ItemView {
-  private readonly plugin: TerminalPlugin;
+  private readonly plugin: ShellPlugin;
   private unsubscribe: (() => void) | null = null;
 
-  constructor(leaf: WorkspaceLeaf, plugin: TerminalPlugin) {
+  constructor(leaf: WorkspaceLeaf, plugin: ShellPlugin) {
     super(leaf);
     this.plugin = plugin;
   }
@@ -32,7 +32,7 @@ export class ShellsView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    this.contentEl.addClass('obsidian-terminal-shells-panel');
+    this.contentEl.addClass('obsidian-shell-list-panel');
     this.render();
     this.unsubscribe = this.plugin.onSessionsChanged(() => this.render());
   }
@@ -47,12 +47,12 @@ export class ShellsView extends ItemView {
     const sessions = this.plugin.listSessions();
     if (sessions.length === 0) {
       this.contentEl.createEl('p', {
-        cls: 'obsidian-terminal-shells-empty',
+        cls: 'obsidian-shell-list-empty',
         text: 'No shells running. Open one from the command palette.',
       });
       return;
     }
-    const list = this.contentEl.createDiv({ cls: 'obsidian-terminal-shells-list' });
+    const list = this.contentEl.createDiv({ cls: 'obsidian-shell-list-items' });
     for (const entry of sessions) {
       this.renderRow(list, entry);
     }
@@ -60,20 +60,20 @@ export class ShellsView extends ItemView {
 
   private renderRow(parent: HTMLElement, entry: SessionEntry): void {
     const state = this.plugin.describeSessionState(entry);
-    const row = parent.createDiv({ cls: 'obsidian-terminal-shells-row' });
+    const row = parent.createDiv({ cls: 'obsidian-shell-list-row' });
     row.dataset.state = state;
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
 
-    const labelEl = row.createSpan({ cls: 'obsidian-terminal-shells-label' });
+    const labelEl = row.createSpan({ cls: 'obsidian-shell-list-label' });
     labelEl.setText(entry.label);
 
-    const badge = row.createSpan({ cls: 'obsidian-terminal-shells-state' });
+    const badge = row.createSpan({ cls: 'obsidian-shell-list-state' });
     badge.setText(STATE_LABEL[state]);
 
-    const actions = row.createDiv({ cls: 'obsidian-terminal-shells-actions' });
+    const actions = row.createDiv({ cls: 'obsidian-shell-list-actions' });
     const killBtn = actions.createEl('button', {
-      cls: 'clickable-icon obsidian-terminal-shells-kill',
+      cls: 'clickable-icon obsidian-shell-list-kill',
       attr: { 'aria-label': `Kill ${entry.label}` },
     });
     setIcon(killBtn, 'x');

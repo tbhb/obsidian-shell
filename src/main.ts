@@ -4,12 +4,12 @@ import { PtySession, probePty } from './pty';
 import {
   DEFAULT_SETTINGS,
   mergeSettings,
-  type TerminalPluginSettings,
-  TerminalSettingTab,
+  type ShellPluginSettings,
+  ShellSettingTab,
 } from './settings';
 import { SHELLS_VIEW_TYPE, ShellsView } from './sidebar';
 import './styles.css';
-import { TERMINAL_VIEW_TYPE, TerminalView } from './view';
+import { SHELL_VIEW_TYPE, ShellView } from './view';
 
 export interface SessionEntry {
   id: string;
@@ -19,53 +19,53 @@ export interface SessionEntry {
 
 export type SessionState = 'attached' | 'detached' | 'exited';
 
-export default class TerminalPlugin extends Plugin {
-  settings: TerminalPluginSettings = DEFAULT_SETTINGS;
+export default class ShellPlugin extends Plugin {
+  settings: ShellPluginSettings = DEFAULT_SETTINGS;
   private readonly sessions = new Map<string, SessionEntry>();
   private nextSessionNumber = 1;
   private readonly sessionListeners = new Set<() => void>();
 
   async onload(): Promise<void> {
     await this.loadSettings();
-    this.addSettingTab(new TerminalSettingTab(this.app, this));
-    this.registerView(TERMINAL_VIEW_TYPE, (leaf) => new TerminalView(leaf, this));
+    this.addSettingTab(new ShellSettingTab(this.app, this));
+    this.registerView(SHELL_VIEW_TYPE, (leaf) => new ShellView(leaf, this));
     this.registerView(SHELLS_VIEW_TYPE, (leaf) => new ShellsView(leaf, this));
     this.addRibbonIcon('terminal-square', 'Shells', () => {
       void this.activateShellsView();
     });
     this.addCommand({
-      id: 'open-shell',
-      name: 'Open shell',
+      id: 'open',
+      name: 'Open',
       callback: () => this.activateView(),
     });
     this.addCommand({
-      id: 'open-shells-sidebar',
-      name: 'Open shells sidebar',
+      id: 'open-sidebar',
+      name: 'Open sidebar',
       callback: () => this.activateShellsView(),
     });
     this.addCommand({
-      id: 'new-shell',
-      name: 'New shell',
+      id: 'new',
+      name: 'New',
       callback: () => this.newShell(),
     });
     this.addCommand({
-      id: 'kill-shell',
-      name: 'Kill shell',
+      id: 'kill',
+      name: 'Kill',
       callback: () => this.killActiveShell(),
     });
     this.addCommand({
-      id: 'restart-shell',
-      name: 'Restart shell',
+      id: 'restart',
+      name: 'Restart',
       callback: () => this.restartActiveShell(),
     });
     this.addCommand({
-      id: 'kill-all-shells',
-      name: 'Kill all shells',
+      id: 'kill-all',
+      name: 'Kill all',
       callback: () => this.killAllSessions(),
     });
     this.addCommand({
-      id: 'switch-shell',
-      name: 'Switch shell',
+      id: 'switch',
+      name: 'Switch',
       callback: () => this.openShellPicker(),
     });
     this.addCommand({
@@ -101,7 +101,7 @@ export default class TerminalPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    const stored = (await this.loadData()) as Partial<TerminalPluginSettings> | null;
+    const stored = (await this.loadData()) as Partial<ShellPluginSettings> | null;
     this.settings = mergeSettings(stored);
   }
 
@@ -112,7 +112,7 @@ export default class TerminalPlugin extends Plugin {
 
   async activateView(): Promise<void> {
     const { workspace } = this.app;
-    const existing = workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)[0];
+    const existing = workspace.getLeavesOfType(SHELL_VIEW_TYPE)[0];
     if (existing) {
       await workspace.revealLeaf(existing);
       return;
@@ -121,7 +121,7 @@ export default class TerminalPlugin extends Plugin {
     if (!leaf) {
       return;
     }
-    await leaf.setViewState({ type: TERMINAL_VIEW_TYPE, active: true });
+    await leaf.setViewState({ type: SHELL_VIEW_TYPE, active: true });
     await workspace.revealLeaf(leaf);
   }
 
@@ -143,12 +143,12 @@ export default class TerminalPlugin extends Plugin {
   async newShell(): Promise<void> {
     const { workspace } = this.app;
     const leaf = workspace.getLeaf('tab');
-    await leaf.setViewState({ type: TERMINAL_VIEW_TYPE, active: true });
+    await leaf.setViewState({ type: SHELL_VIEW_TYPE, active: true });
     await workspace.revealLeaf(leaf);
   }
 
   killActiveShell(): void {
-    const view = this.findActiveTerminalView();
+    const view = this.findActiveShellView();
     if (!view) {
       new Notice('No active shell to kill.');
       return;
@@ -161,7 +161,7 @@ export default class TerminalPlugin extends Plugin {
   }
 
   restartActiveShell(): void {
-    const view = this.findActiveTerminalView();
+    const view = this.findActiveShellView();
     if (!view) {
       new Notice('No active shell to restart.');
       return;
@@ -212,9 +212,9 @@ export default class TerminalPlugin extends Plugin {
   }
 
   isSessionAttached(id: string): boolean {
-    for (const leaf of this.app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+    for (const leaf of this.app.workspace.getLeavesOfType(SHELL_VIEW_TYPE)) {
       const view = leaf.view;
-      if (view instanceof TerminalView && view.getSessionId() === id) {
+      if (view instanceof ShellView && view.getSessionId() === id) {
         return true;
       }
     }
@@ -237,28 +237,28 @@ export default class TerminalPlugin extends Plugin {
     const { workspace } = this.app;
     // If some leaf already hosts this session, just reveal it. Moving a live
     // session between leaves creates a tug-of-war over the same writer.
-    for (const leaf of workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+    for (const leaf of workspace.getLeavesOfType(SHELL_VIEW_TYPE)) {
       const view = leaf.view;
-      if (view instanceof TerminalView && view.getSessionId() === id) {
+      if (view instanceof ShellView && view.getSessionId() === id) {
         await workspace.revealLeaf(leaf);
         view.focusTerminal();
         return;
       }
     }
-    const activeView = this.findActiveTerminalView();
+    const activeView = this.findActiveShellView();
     if (activeView) {
       activeView.attachToSession(id);
       return;
     }
     const leaf = workspace.getLeaf('tab');
     await leaf.setViewState({
-      type: TERMINAL_VIEW_TYPE,
+      type: SHELL_VIEW_TYPE,
       active: true,
       state: { sessionId: id },
     });
     await workspace.revealLeaf(leaf);
     const view = leaf.view;
-    if (view instanceof TerminalView) {
+    if (view instanceof ShellView) {
       view.focusTerminal();
     }
   }
@@ -302,17 +302,17 @@ export default class TerminalPlugin extends Plugin {
   }
 
   refreshOpenViews(): void {
-    for (const leaf of this.app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+    for (const leaf of this.app.workspace.getLeavesOfType(SHELL_VIEW_TYPE)) {
       const view = leaf.view;
-      if (view instanceof TerminalView) {
+      if (view instanceof ShellView) {
         view.applySettings(this.settings);
       }
     }
   }
 
-  findActiveTerminalView(): TerminalView | null {
-    const view = this.app.workspace.getActiveViewOfType(TerminalView);
-    return view instanceof TerminalView ? view : null;
+  findActiveShellView(): ShellView | null {
+    const view = this.app.workspace.getActiveViewOfType(ShellView);
+    return view instanceof ShellView ? view : null;
   }
 
   private async runPtySelfTest(): Promise<void> {

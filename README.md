@@ -1,4 +1,4 @@
-# obsidian-terminal
+# obsidian-shell
 
 An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] and [node-pty][node-pty]. Desktop only. Bootstrapped from [obsidian-vite-sample-plugin][scaffold].
 
@@ -35,8 +35,8 @@ Clone the repository into a vault's plugin directory. Install dependencies. Comp
 
 ```bash
 cd /path/to/vault/.obsidian/plugins
-git clone https://github.com/tbhb/obsidian-terminal.git
-cd obsidian-terminal
+git clone https://github.com/tbhb/obsidian-shell.git
+cd obsidian-shell
 pnpm install
 pnpm rebuild:native
 pnpm build
@@ -68,7 +68,7 @@ pnpm format          # biome format --write
 ## Layout
 
 ```text
-obsidian-terminal/
+obsidian-shell/
 ├── manifest.json            # Obsidian plugin manifest
 ├── versions.json            # version -> minAppVersion map
 ├── vite.config.ts           # Vite 8 / Rolldown library-mode config
@@ -79,7 +79,7 @@ obsidian-terminal/
 ├── src/
 │   ├── main.ts              # plugin entry, commands, ribbon, event bus
 │   ├── pty.ts               # node-pty loader + PtySession wrapper + self-test
-│   ├── view.ts              # TerminalView, an ItemView hosting xterm.js
+│   ├── view.ts              # ShellView, an ItemView hosting xterm.js
 │   ├── sidebar.ts           # ShellsView, the left-sidebar list
 │   ├── picker.ts            # Switch shell FuzzySuggestModal
 │   ├── settings.ts          # settings schema + mergeSettings + tab
@@ -128,7 +128,7 @@ Two deliberate choices for Obsidian compatibility:
 
 **BRAT compatibility.** [BRAT] works with the stable channel out of the box. For beta testers:
 
-- Point them at `tbhb/obsidian-terminal`, or wherever this repository lives, in BRAT's "Add beta plugin" dialog.
+- Point them at `tbhb/obsidian-shell`, or wherever this repository lives, in BRAT's "Add beta plugin" dialog.
 - Push betas to the `beta` branch. BRAT reads each release's `manifest.json` asset and respects GitHub's `prerelease: true` flag, so beta testers automatically get the `-beta.N` releases while users installing from the community catalog only see stable versions.
 - Modern BRAT doesn't use the legacy `manifest-beta.json` file. It reads the GitHub release asset plus the pre-release flag.
 

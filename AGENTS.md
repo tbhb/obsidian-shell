@@ -40,7 +40,7 @@ The pre-commit hook runs `nano-staged`. The pre-push hook runs typecheck and tes
 src/
 ├── main.ts                 # plugin entry, commands, ribbon, session event bus
 ├── pty.ts                  # node-pty loader + PtySession wrapper + self-test
-├── view.ts                 # TerminalView, an ItemView hosting xterm.js
+├── view.ts                 # ShellView, an ItemView hosting xterm.js
 ├── sidebar.ts              # ShellsView, the left-sidebar list
 ├── picker.ts               # Switch shell FuzzySuggestModal
 ├── settings.ts             # settings schema + mergeSettings + tab
@@ -94,9 +94,9 @@ pnpm vale:sync        # download vale style packages
 
 ## Architecture
 
-- **Sessions live on the plugin**, not the view. `TerminalPlugin.sessions` maps a stable id to a `SessionEntry` that wraps a `PtySession`. Views attach and detach from sessions. They never own the process lifetime. `createSession`, `killSession`, and `killAllSessions` mutate the map and call `notifySessionsChanged` so the sidebar and anything else subscribed re-renders.
-- **Per-leaf sessions.** Each `TerminalView` carries a `sessionId` persisted through view state. `bindSession` either attaches to an existing entry or spawns a fresh one. The view uses a `sessionCreatedByThisView` flag so it can discard a placeholder session when `setState` arrives post-open with a different id. See the Obsidian gotchas below for the ordering details.
-- **Two view types.** `TERMINAL_VIEW_TYPE`, `obsidian-terminal`, hosts xterm.js inside a leaf. `SHELLS_VIEW_TYPE`, `obsidian-terminal-shells`, renders the left-sidebar list. Both register in `onload`. The ribbon icon and the `Open shells sidebar` command both target the sidebar view.
+- **Sessions live on the plugin**, not the view. `ShellPlugin.sessions` maps a stable id to a `SessionEntry` that wraps a `PtySession`. Views attach and detach from sessions. They never own the process lifetime. `createSession`, `killSession`, and `killAllSessions` mutate the map and call `notifySessionsChanged` so the sidebar and anything else subscribed re-renders.
+- **Per-leaf sessions.** Each `ShellView` carries a `sessionId` persisted through view state. `bindSession` either attaches to an existing entry or spawns a fresh one. The view uses a `sessionCreatedByThisView` flag so it can discard a placeholder session when `setState` arrives post-open with a different id. See the Obsidian gotchas below for the ordering details.
+- **Two view types.** `SHELL_VIEW_TYPE`, `obsidian-shell`, hosts xterm.js inside a leaf. `SHELLS_VIEW_TYPE`, `obsidian-shell-list`, renders the left-sidebar list. Both register in `onload`. The ribbon icon and the `Open shells sidebar` command both target the sidebar view.
 - **Picker and sidebar share plumbing.** `listSessions`, `isSessionAttached`, `describeSessionState`, and `switchToSession` compose the session surface both consumers use. `switchToSession` reveals an existing leaf, swaps the active terminal's binding, or opens a new leaf with `state.sessionId`, then routes focus to the xterm.
 
 ## Testing
@@ -119,7 +119,7 @@ Every markdown, YAML, and workflow file ships through a gate before landing:
 - `yamllint` for YAML
 - `actionlint` for GitHub Actions workflows
 
-Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/obsidian-terminal/accept.txt` when Vale flags them as spelling errors. Avoid em-dashes entirely, use commas or periods. Vale flags long parentheticals over 25 characters, so break them into separate sentences. Write each paragraph on a single line without hard wrapping. Use reference-style links with definitions at the bottom of their containing paragraph or section.
+Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/obsidian-shell/accept.txt` when Vale flags them as spelling errors. Avoid em-dashes entirely, use commas or periods. Vale flags long parentheticals over 25 characters, so break them into separate sentences. Write each paragraph on a single line without hard wrapping. Use reference-style links with definitions at the bottom of their containing paragraph or section.
 
 ## Git workflow
 
@@ -153,13 +153,13 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 - Register listeners and intervals via `this.registerDomEvent()` and `this.registerInterval()` so they unload with the plugin.
 - Gate desktop-only features behind `Platform.isMobile` checks.
 - Use `createEl`, `createDiv`, and `createSpan` helpers. Never set `innerHTML`.
-- The plugin id `obsidian-terminal` must match the folder name under `.obsidian/plugins/` for local development.
+- The plugin id `obsidian-shell` must match the folder name under `.obsidian/plugins/` for local development.
 - `src/pty.ts` loads `node-pty` via Electron's `window.require` at runtime. Never `import` it statically. Vite would try to bundle the native binary and fail.
 - Run `pnpm rebuild:native` any time `node-pty` updates or the pinned Electron version changes. The compiled `node_modules/node-pty/build/Release/*.node` ships inside the plugin folder at release time.
-- Obsidian doesn't guarantee `view.setState` fires before `onOpen` on newly created leaves. `TerminalView.onOpen` seeds `sessionId` from `leaf.getViewState().state` before `bindSession` runs, and `setState` discards any placeholder session `bindSession` spawned when it arrives post-open with a different id. Preserve that ordering when editing the view.
+- Obsidian doesn't guarantee `view.setState` fires before `onOpen` on newly created leaves. `ShellView.onOpen` seeds `sessionId` from `leaf.getViewState().state` before `bindSession` runs, and `setState` discards any placeholder session `bindSession` spawned when it arrives post-open with a different id. Preserve that ordering when editing the view.
 - `setState` also fires with unrelated state on workspace restore, layout operations, and internal `setViewState` calls. Only update `sessionId` when `setState` explicitly provides a string. Clobbering the field to `null` strands live bindings.
 - xterm.js can't resolve CSS custom properties through canvas metrics. Pass a concrete font stack resolved from `getComputedStyle(el).getPropertyValue('--font-monospace')` before handing it to `new Terminal` or `applySettings`.
-- xterm's `FitAddon` reads `parentElement.height` via `getComputedStyle` but only subtracts padding it finds on the `.xterm` element. Adding padding to the host element silently overshoots. `TerminalView` measures Obsidian's status-bar overlay at runtime and shrinks `contentEl` so the last row clears it.
+- xterm's `FitAddon` reads `parentElement.height` via `getComputedStyle` but only subtracts padding it finds on the `.xterm` element. Adding padding to the host element silently overshoots. `ShellView` measures Obsidian's status-bar overlay at runtime and shrinks `contentEl` so the last row clears it.
 - Obsidian's `ResizeObserver` runs more reliably than the `onResize` hook for pane moves. The terminal view observes `containerEl`, not `contentEl`, to avoid feedback loops from its own inline height writes.
 
 ## Rules at a glance

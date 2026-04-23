@@ -1,5 +1,5 @@
 /*
- * Stylesheet entry for obsidian-terminal.
+ * Stylesheet entry for obsidian-shell.
  *
  * Vite + @tailwindcss/vite compile this file and emit it to the plugin root
  * as `styles.css`, which Obsidian loads at runtime.
@@ -26,7 +26,7 @@
 }
 
 @layer components {
-  .obsidian-terminal-host {
+  .obsidian-shell-host {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
@@ -35,28 +35,28 @@
     overflow: hidden;
   }
 
-  .obsidian-terminal-host .xterm {
+  .obsidian-shell-host .xterm {
     flex: 1 1 auto;
     min-height: 0;
   }
 
-  .obsidian-terminal-shells-panel {
+  .obsidian-shell-list-panel {
     padding: var(--size-4-2);
   }
 
-  .obsidian-terminal-shells-empty {
+  .obsidian-shell-list-empty {
     color: var(--text-muted);
     font-size: var(--font-ui-small);
     margin: 0;
   }
 
-  .obsidian-terminal-shells-list {
+  .obsidian-shell-list-items {
     display: flex;
     flex-direction: column;
     gap: var(--size-2-1);
   }
 
-  .obsidian-terminal-shells-row {
+  .obsidian-shell-list-row {
     display: flex;
     align-items: center;
     gap: var(--size-4-2);
@@ -65,11 +65,11 @@
     cursor: pointer;
   }
 
-  .obsidian-terminal-shells-row:hover {
+  .obsidian-shell-list-row:hover {
     background: var(--background-modifier-hover);
   }
 
-  .obsidian-terminal-shells-label {
+  .obsidian-shell-list-label {
     flex: 1 1 auto;
     min-width: 0;
     color: var(--text-normal);
@@ -78,7 +78,7 @@
     white-space: nowrap;
   }
 
-  .obsidian-terminal-shells-state {
+  .obsidian-shell-list-state {
     font-size: var(--font-ui-smaller);
     padding: 0 var(--size-2-2);
     border-radius: var(--radius-s);
@@ -86,17 +86,17 @@
     color: var(--text-muted);
   }
 
-  .obsidian-terminal-shells-row[data-state='attached'] .obsidian-terminal-shells-state {
+  .obsidian-shell-list-row[data-state='attached'] .obsidian-shell-list-state {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
   }
 
-  .obsidian-terminal-shells-row[data-state='exited'] .obsidian-terminal-shells-state {
+  .obsidian-shell-list-row[data-state='exited'] .obsidian-shell-list-state {
     background: var(--background-modifier-error);
     color: var(--text-on-accent);
   }
 
-  .obsidian-terminal-shells-actions {
+  .obsidian-shell-list-actions {
     display: flex;
     align-items: center;
   }

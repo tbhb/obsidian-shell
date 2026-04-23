@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-terminal",
+  "name": "obsidian-shell",
   "version": "0.1.0",
   "description": "Embedded xterm.js terminal backed by node-pty.",
   "private": true,
