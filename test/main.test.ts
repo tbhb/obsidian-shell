@@ -1,7 +1,14 @@
-import { __resetObsidianMocks, App } from 'obsidian';
+import { __getNotices, __resetObsidianMocks, App } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TerminalPlugin from '../src/main';
+import { probePty } from '../src/pty';
 import { DEFAULT_SETTINGS } from '../src/settings';
+
+vi.mock('../src/pty', () => ({
+  probePty: vi.fn(),
+}));
+
+const mockedProbePty = vi.mocked(probePty);
 
 function makePlugin(): TerminalPlugin {
   return new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
@@ -9,6 +16,7 @@ function makePlugin(): TerminalPlugin {
 
 beforeEach(() => {
   __resetObsidianMocks();
+  mockedProbePty.mockReset();
 });
 
 describe('TerminalPlugin.loadSettings', () => {
@@ -38,10 +46,11 @@ describe('TerminalPlugin.saveSettings', () => {
 });
 
 describe('TerminalPlugin.onload', () => {
-  it('loads settings and registers the setting tab', async () => {
+  it('loads settings, registers the setting tab, and registers the Self-test command', async () => {
     const plugin = makePlugin();
     await plugin.onload();
     expect(plugin.__settingTabs).toHaveLength(1);
+    expect(plugin.__findCommand('run-self-test')).toBeDefined();
     plugin.onunload();
   });
 });
@@ -52,5 +61,37 @@ describe('TerminalPlugin.onExternalSettingsChange', () => {
     plugin.loadData = vi.fn(async () => null);
     await plugin.onExternalSettingsChange();
     expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe('run-self-test command', () => {
+  it('shows a success notice when probePty resolves', async () => {
+    mockedProbePty.mockResolvedValue('Darwin 25.4.0 arm64');
+    const plugin = makePlugin();
+    await plugin.onload();
+    const cmd = plugin.__findCommand('run-self-test');
+    await cmd?.callback?.();
+    const last = __getNotices().at(-1);
+    expect(last?.message).toBe('Self-test: Darwin 25.4.0 arm64');
+  });
+
+  it('shows the error message when probePty rejects with an Error', async () => {
+    mockedProbePty.mockRejectedValue(new Error('native binary missing'));
+    const plugin = makePlugin();
+    await plugin.onload();
+    const cmd = plugin.__findCommand('run-self-test');
+    await cmd?.callback?.();
+    const last = __getNotices().at(-1);
+    expect(last?.message).toBe('Self-test failed: native binary missing');
+  });
+
+  it('stringifies non-Error rejections', async () => {
+    mockedProbePty.mockRejectedValue('string rejection');
+    const plugin = makePlugin();
+    await plugin.onload();
+    const cmd = plugin.__findCommand('run-self-test');
+    await cmd?.callback?.();
+    const last = __getNotices().at(-1);
+    expect(last?.message).toBe('Self-test failed: string rejection');
   });
 });

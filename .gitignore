@@ -27,6 +27,9 @@ node_modules
 # obsidian runtime data
 data.json
 
+# native-rebuild cache (HOME redirect from sandboxed builds)
+.native-cache
+
 # test output
 coverage
 

@@ -30,6 +30,7 @@
     "lint:spelling": "cspell --no-progress --no-summary --gitignore .",
     "lint:staged": "nano-staged",
     "lint:yaml": "yamllint --strict .",
+    "rebuild:native": "electron-rebuild --version 39.7.0 --only node-pty",
     "vale:sync": "vale sync"
   },
   "nano-staged": {
@@ -51,6 +52,7 @@
     "@biomejs/biome": "^2.0.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
+    "@electron/rebuild": "^4.0.4",
     "@tailwindcss/vite": "^4.2.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -58,6 +60,7 @@
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "^4.1.4",
     "cspell": "^9.7.0",
+    "electron": "39.7.0",
     "eslint": "^9.30.1",
     "eslint-plugin-obsidianmd": "^0.1.9",
     "globals": "^15.14.0",
@@ -79,5 +82,8 @@
         "eslint-plugin-obsidianmd>obsidian": "*"
       }
     }
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
   }
 }

@@ -101,9 +101,20 @@ export class Component {
   registerInterval = vi.fn();
 }
 
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  minAppVersion: string;
+  description?: string;
+  author?: string;
+  authorUrl?: string;
+  dir?: string;
+}
+
 export class Plugin extends Component {
   app: App;
-  manifest: Record<string, unknown>;
+  manifest: PluginManifest;
 
   // Test introspection — the plugin code registers callbacks here; tests
   // invoke them to exercise branches.
@@ -119,7 +130,15 @@ export class Plugin extends Component {
   __markdownPostProcessors: CapturedMarkdownPostProcessor[] = [];
   __markdownCodeBlockProcessors = new Map<string, CapturedMarkdownCodeBlockProcessor>();
 
-  constructor(app: App, manifest: Record<string, unknown> = {}) {
+  constructor(
+    app: App,
+    manifest: PluginManifest = {
+      id: 'mock-plugin',
+      name: 'Mock Plugin',
+      version: '0.0.0',
+      minAppVersion: '0.0.0',
+    },
+  ) {
     super();
     this.app = app;
     this.manifest = manifest;
@@ -195,6 +214,15 @@ export class Plugin extends Component {
 interface CapturedWorkspaceEvent {
   event: string;
   cb: (...args: any[]) => any;
+}
+
+export class FileSystemAdapter {
+  getFullPath(relativePath: string): string {
+    return `/mock/vault/${relativePath}`;
+  }
+  getBasePath(): string {
+    return '/mock/vault';
+  }
 }
 
 export class App {

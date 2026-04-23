@@ -37,9 +37,8 @@ The pre-commit hook runs `nano-staged`. The pre-push hook runs typecheck and tes
 src/
 ├── main.ts                 # plugin entry, imports styles.css
 ├── settings.ts             # settings tab + mergeSettings helper
-├── view.ts                 # custom ItemView
-├── modal.ts                # modal
-└── styles.css              # Tailwind entry + @layer components
+├── pty.ts                  # Electron-runtime loader for node-pty
+└── styles.css              # Tailwind entry + @theme inline block
 test/
 ├── __mocks__/obsidian.ts   # runtime stub; the obsidian package ships types only
 ├── setup.ts                # jsdom polyfills + jest-dom matchers
@@ -62,6 +61,7 @@ Config lives at the repo root: `biome.json`, `eslint.config.mts`, `cspell.json` 
 ```bash
 pnpm dev              # vite build --watch
 pnpm build            # tsc --noEmit + vite build
+pnpm rebuild:native   # compile node-pty against Electron 39 headers
 pnpm test             # vitest run
 pnpm test:watch       # vitest in watch mode
 pnpm test:coverage    # vitest run --coverage, enforces 100% thresholds
@@ -138,6 +138,8 @@ Add new technical terms to `cspell-words.txt`. Avoid em-dashes entirely, use com
 - Gate desktop-only features behind `Platform.isMobile` checks.
 - Use `createEl`, `createDiv`, and `createSpan` helpers. Never set `innerHTML`.
 - The plugin id `obsidian-terminal` must match the folder name under `.obsidian/plugins/` for local development.
+- `src/pty.ts` loads `node-pty` via Electron's `window.require` at runtime. Never `import` it statically. Vite would try to bundle the native binary and fail.
+- Run `pnpm rebuild:native` any time `node-pty` updates or the pinned Electron version changes. The compiled `node_modules/node-pty/build/Release/*.node` ships inside the plugin folder at release time.
 
 ## Rules at a glance
 

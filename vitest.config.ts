@@ -12,7 +12,10 @@ export default defineConfig({
       reporter: ['text', 'text-summary', 'html', 'json'],
       reportsDirectory: './coverage',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'test/**', '**/__mocks__/**'],
+      // src/pty.ts loads node-pty via Electron's window.require against a
+      // compiled native binary. Neither is reachable from jsdom, so the
+      // module is validated end-to-end inside Obsidian, not in vitest.
+      exclude: ['src/**/*.d.ts', 'src/pty.ts', 'test/**', '**/__mocks__/**'],
       // The scaffold ships at 100% across all metrics. Keep it that way —
       // any regression in branches/lines/functions/statements fails CI.
       thresholds: {

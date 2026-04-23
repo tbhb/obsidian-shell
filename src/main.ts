@@ -1,4 +1,5 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
+import { probePty } from './pty';
 import {
   DEFAULT_SETTINGS,
   mergeSettings,
@@ -13,6 +14,11 @@ export default class TerminalPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
     this.addSettingTab(new TerminalSettingTab(this.app, this));
+    this.addCommand({
+      id: 'run-self-test',
+      name: 'Run self-test',
+      callback: () => this.runPtySelfTest(),
+    });
   }
 
   onunload(): void {}
@@ -28,5 +34,15 @@ export default class TerminalPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  private async runPtySelfTest(): Promise<void> {
+    try {
+      const output = await probePty(this);
+      new Notice(`Self-test: ${output}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      new Notice(`Self-test failed: ${message}`);
+    }
   }
 }
