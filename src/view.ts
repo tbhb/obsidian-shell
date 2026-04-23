@@ -1,12 +1,18 @@
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { type ITheme, Terminal } from '@xterm/xterm';
-import { ItemView, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
 import type TerminalPlugin from './main';
 import type { PtySession } from './pty';
 import type { TerminalPluginSettings } from './settings';
 
 export const TERMINAL_VIEW_TYPE = 'obsidian-terminal';
+
+const DEFAULT_DISPLAY_TEXT = 'Shell';
+
+interface PersistedState {
+  sessionId?: string;
+}
 
 function resolveFontFamily(el: HTMLElement, override: string): string {
   if (override) {
@@ -39,6 +45,8 @@ export class TerminalView extends ItemView {
   private fitAddon: FitAddon | null = null;
   private webglAddon: WebglAddon | null = null;
   private session: PtySession | null = null;
+  private sessionId: string | null = null;
+  private label: string = DEFAULT_DISPLAY_TEXT;
 
   constructor(leaf: WorkspaceLeaf, plugin: TerminalPlugin) {
     super(leaf);
@@ -50,18 +58,35 @@ export class TerminalView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Shell';
+    return this.label;
   }
 
   getIcon(): string {
     return 'terminal';
   }
 
+  getSessionId(): string | null {
+    return this.sessionId;
+  }
+
+  getState(): Record<string, unknown> {
+    const base = super.getState();
+    return { ...base, sessionId: this.sessionId };
+  }
+
+  async setState(state: unknown, result: ViewStateResult): Promise<void> {
+    if (state && typeof state === 'object') {
+      const { sessionId } = state as PersistedState;
+      this.sessionId = typeof sessionId === 'string' ? sessionId : null;
+    }
+    return super.setState(state, result);
+  }
+
   async onOpen(): Promise<void> {
     this.contentEl.empty();
     this.contentEl.addClass('obsidian-terminal-host');
 
-    const { appearance, behavior, shell } = this.plugin.settings;
+    const { appearance, behavior } = this.plugin.settings;
 
     const terminal = new Terminal({
       fontFamily: resolveFontFamily(this.contentEl, appearance.fontFamily),
@@ -124,18 +149,13 @@ export class TerminalView extends ItemView {
       return;
     }
     this.session?.detach();
-    this.terminal.clear();
-    this.session = null;
-    this.bindSession();
-  }
-
-  private bindSession(): void {
-    if (!this.terminal) {
-      return;
+    if (this.sessionId) {
+      this.plugin.killSession(this.sessionId);
     }
-    const session = this.plugin.getOrCreateSession(this.terminal.cols, this.terminal.rows);
-    session.attach((data) => this.terminal?.write(data));
-    this.session = session;
+    this.sessionId = null;
+    this.session = null;
+    this.terminal.clear();
+    this.bindSession();
   }
 
   onResize(): void {
@@ -157,5 +177,30 @@ export class TerminalView extends ItemView {
       theme: appearance.followObsidianTheme ? resolveObsidianTheme(this.contentEl) : undefined,
     };
     this.fitAddon?.fit();
+  }
+
+  private bindSession(): void {
+    if (!this.terminal) {
+      return;
+    }
+    const existing = this.sessionId ? this.plugin.getSession(this.sessionId) : null;
+    const entry = existing ?? this.plugin.createSession(this.terminal.cols, this.terminal.rows);
+    this.sessionId = entry.id;
+    this.label = entry.label;
+    entry.session.attach((data) => this.terminal?.write(data));
+    this.session = entry.session;
+    this.refreshTabTitle();
+  }
+
+  private refreshTabTitle(): void {
+    // ItemView does not expose a public way to reflect getDisplayText changes,
+    // but the tab header exposes the title element on the leaf. Fall back to
+    // requestSaveLayout if the element is not available yet (pre-mount).
+    const header = (this.leaf as { tabHeaderInnerTitleEl?: HTMLElement }).tabHeaderInnerTitleEl;
+    if (header) {
+      header.setText(this.label);
+      return;
+    }
+    this.app.workspace.requestSaveLayout();
   }
 }

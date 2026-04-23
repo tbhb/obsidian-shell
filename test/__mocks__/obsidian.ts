@@ -229,10 +229,12 @@ export class App {
   workspace: {
     getLeavesOfType: (type: string) => WorkspaceLeaf[];
     getRightLeaf: (split: boolean) => WorkspaceLeaf | null;
+    getLeaf: (mode?: boolean | 'split' | 'tab' | 'window') => WorkspaceLeaf;
     revealLeaf: (leaf: WorkspaceLeaf) => unknown;
     detachLeavesOfType: (type: string) => void;
     getActiveViewOfType: (type: unknown) => unknown;
     getActiveFile: () => TFile | null;
+    requestSaveLayout: () => void;
     on: (event: string, cb: (...args: any[]) => any) => CapturedWorkspaceEvent;
     openLinkText: (linktext: string, sourcePath: string, newLeaf?: unknown) => Promise<void>;
     trigger: (name: string, ...args: any[]) => void;
@@ -249,10 +251,12 @@ export class App {
     this.workspace = {
       getLeavesOfType: vi.fn((_type: string) => [] as WorkspaceLeaf[]),
       getRightLeaf: vi.fn((_split: boolean) => null),
+      getLeaf: vi.fn((_mode?: boolean | 'split' | 'tab' | 'window') => new WorkspaceLeaf()),
       revealLeaf: vi.fn(),
       detachLeavesOfType: vi.fn((_type: string) => undefined),
       getActiveViewOfType: vi.fn(() => null),
       getActiveFile: vi.fn(() => null as TFile | null),
+      requestSaveLayout: vi.fn(),
       on: vi.fn((event: string, cb: (...args: any[]) => any) => {
         const ref: CapturedWorkspaceEvent = { event, cb };
         eventHandlers.push(ref);

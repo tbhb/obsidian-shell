@@ -9,9 +9,16 @@ import {
 import './styles.css';
 import { TERMINAL_VIEW_TYPE, TerminalView } from './view';
 
+export interface SessionEntry {
+  id: string;
+  label: string;
+  session: PtySession;
+}
+
 export default class TerminalPlugin extends Plugin {
   settings: TerminalPluginSettings = DEFAULT_SETTINGS;
-  private ptySession: PtySession | null = null;
+  private readonly sessions = new Map<string, SessionEntry>();
+  private nextSessionNumber = 1;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -23,9 +30,24 @@ export default class TerminalPlugin extends Plugin {
       callback: () => this.activateView(),
     });
     this.addCommand({
+      id: 'new-shell',
+      name: 'New shell',
+      callback: () => this.newShell(),
+    });
+    this.addCommand({
+      id: 'kill-shell',
+      name: 'Kill shell',
+      callback: () => this.killActiveShell(),
+    });
+    this.addCommand({
       id: 'restart-shell',
       name: 'Restart shell',
-      callback: () => this.restartSession(),
+      callback: () => this.restartActiveShell(),
+    });
+    this.addCommand({
+      id: 'kill-all-shells',
+      name: 'Kill all shells',
+      callback: () => this.killAllSessions(),
     });
     this.addCommand({
       id: 'run-self-test',
@@ -35,8 +57,7 @@ export default class TerminalPlugin extends Plugin {
   }
 
   onunload(): void {
-    this.ptySession?.kill();
-    this.ptySession = null;
+    this.killAllSessions();
   }
 
   onUserEnable(): void {
@@ -73,6 +94,35 @@ export default class TerminalPlugin extends Plugin {
     await workspace.revealLeaf(leaf);
   }
 
+  async newShell(): Promise<void> {
+    const { workspace } = this.app;
+    const leaf = workspace.getLeaf('tab');
+    await leaf.setViewState({ type: TERMINAL_VIEW_TYPE, active: true });
+    await workspace.revealLeaf(leaf);
+  }
+
+  killActiveShell(): void {
+    const view = this.findActiveTerminalView();
+    if (!view) {
+      new Notice('No active shell to kill.');
+      return;
+    }
+    const id = view.getSessionId();
+    if (!id) {
+      return;
+    }
+    this.killSession(id);
+  }
+
+  restartActiveShell(): void {
+    const view = this.findActiveTerminalView();
+    if (!view) {
+      new Notice('No active shell to restart.');
+      return;
+    }
+    view.reattachSession();
+  }
+
   resolveCwd(): string {
     const { strategy, fixedPath } = this.settings.cwd;
     const adapter = this.app.vault.adapter as FileSystemAdapter;
@@ -88,31 +138,45 @@ export default class TerminalPlugin extends Plugin {
     return adapter.getBasePath();
   }
 
-  getOrCreateSession(cols: number, rows: number): PtySession {
-    if (this.ptySession && !this.ptySession.isDead) {
-      this.ptySession.resize(cols, rows);
-      return this.ptySession;
-    }
+  createSession(cols: number, rows: number): SessionEntry {
+    const number = this.nextSessionNumber++;
+    const id = `shell-${number}`;
+    const label = `Shell ${number}`;
     const { shell } = this.settings;
-    this.ptySession = new PtySession(this, {
+    const session = new PtySession(this, {
       cwd: this.resolveCwd(),
       shell: shell.path || undefined,
       shellArgs: shell.args.length > 0 ? shell.args : undefined,
       cols,
       rows,
     });
-    return this.ptySession;
+    const entry: SessionEntry = { id, label, session };
+    this.sessions.set(id, entry);
+    return entry;
   }
 
-  restartSession(): void {
-    this.ptySession?.kill();
-    this.ptySession = null;
-    for (const leaf of this.app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
-      const view = leaf.view;
-      if (view instanceof TerminalView) {
-        view.reattachSession();
-      }
+  getSession(id: string): SessionEntry | null {
+    const entry = this.sessions.get(id);
+    if (!entry || entry.session.isDead) {
+      return null;
     }
+    return entry;
+  }
+
+  killSession(id: string): void {
+    const entry = this.sessions.get(id);
+    if (!entry) {
+      return;
+    }
+    entry.session.kill();
+    this.sessions.delete(id);
+  }
+
+  killAllSessions(): void {
+    for (const entry of this.sessions.values()) {
+      entry.session.kill();
+    }
+    this.sessions.clear();
   }
 
   refreshOpenViews(): void {
@@ -122,6 +186,11 @@ export default class TerminalPlugin extends Plugin {
         view.applySettings(this.settings);
       }
     }
+  }
+
+  private findActiveTerminalView(): TerminalView | null {
+    const view = this.app.workspace.getActiveViewOfType(TerminalView);
+    return view instanceof TerminalView ? view : null;
   }
 
   private async runPtySelfTest(): Promise<void> {
