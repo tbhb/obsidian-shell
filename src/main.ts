@@ -80,7 +80,19 @@ export default class TerminalPlugin extends Plugin {
   }
 
   onUserEnable(): void {
-    void this.activateView();
+    void this.maybeAutoOpenFirstShell();
+  }
+
+  private async maybeAutoOpenFirstShell(): Promise<void> {
+    // Only auto-open on the very first enable. Subsequent enables
+    // (workspace reload, Hot Reload after a build, toggling the plugin off
+    // and back on) would otherwise spawn a surprise shell every time.
+    const persisted = (await this.loadData()) as unknown;
+    if (persisted !== null) {
+      return;
+    }
+    await this.saveData(this.settings);
+    await this.activateView();
   }
 
   async onExternalSettingsChange(): Promise<void> {

@@ -642,11 +642,27 @@ describe('TerminalPlugin.activateView', () => {
 });
 
 describe('TerminalPlugin.onUserEnable', () => {
-  it('activates the view', () => {
+  it('activates the view when no plugin data exists yet', async () => {
     const plugin = makePlugin();
-    const spy = vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
+    plugin.loadData = vi.fn(async () => null);
+    plugin.saveData = vi.fn();
+    const spy = vi.spyOn(plugin, 'activateView').mockResolvedValue();
     plugin.onUserEnable();
-    expect(spy).toHaveBeenCalledWith(TERMINAL_VIEW_TYPE);
+    await vi.waitFor(() => {
+      expect(spy).toHaveBeenCalled();
+    });
+    expect(plugin.saveData).toHaveBeenCalled();
+  });
+
+  it('skips activation when plugin data is already persisted', async () => {
+    const plugin = makePlugin();
+    plugin.loadData = vi.fn(async () => ({}));
+    const spy = vi.spyOn(plugin, 'activateView').mockResolvedValue();
+    plugin.onUserEnable();
+    // Give the async handler a turn.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 
