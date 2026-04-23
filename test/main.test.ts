@@ -33,6 +33,7 @@ vi.mock('../src/view', () => ({
     ) {}
     applySettings = vi.fn();
     reattachSession = vi.fn();
+    attachToSession = vi.fn();
     getSessionId = vi.fn(() => null as string | null);
   },
 }));
@@ -206,11 +207,159 @@ describe('TerminalPlugin.getSession', () => {
     expect(plugin.getSession('shell-99')).toBeNull();
   });
 
-  it('returns null when the session is dead', () => {
+  it('returns the entry even when the session is dead', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
     (entry.session as unknown as FakeSession).isDead = true;
-    expect(plugin.getSession(entry.id)).toBeNull();
+    expect(plugin.getSession(entry.id)).toBe(entry);
+  });
+});
+
+describe('TerminalPlugin.listSessions', () => {
+  it('returns an empty array when no sessions have been created', () => {
+    const plugin = makePlugin();
+    expect(plugin.listSessions()).toEqual([]);
+  });
+
+  it('returns every tracked session in creation order', () => {
+    const plugin = makePlugin();
+    const a = plugin.createSession(80, 24);
+    const b = plugin.createSession(80, 24);
+    expect(plugin.listSessions()).toEqual([a, b]);
+  });
+});
+
+describe('TerminalPlugin.isSessionAttached', () => {
+  it('returns true when a TerminalView leaf hosts the given id', () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    view.getSessionId = vi.fn().mockReturnValue(entry.id);
+    leaf.view = view;
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    expect(plugin.isSessionAttached(entry.id)).toBe(true);
+  });
+
+  it('returns false when a leaf hosts a different session', () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    view.getSessionId = vi.fn().mockReturnValue('shell-99');
+    leaf.view = view;
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    expect(plugin.isSessionAttached(entry.id)).toBe(false);
+  });
+
+  it('ignores leaves whose view is not a TerminalView', () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const leaf = new WorkspaceLeaf();
+    leaf.view = { render: vi.fn() };
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    expect(plugin.isSessionAttached(entry.id)).toBe(false);
+  });
+});
+
+describe('TerminalPlugin.describeSessionState', () => {
+  it('returns exited when the session is dead', () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    (entry.session as unknown as FakeSession).isDead = true;
+    expect(plugin.describeSessionState(entry)).toBe('exited');
+  });
+
+  it('returns attached when a TerminalView leaf hosts the session', () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    view.getSessionId = vi.fn().mockReturnValue(entry.id);
+    leaf.view = view;
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    expect(plugin.describeSessionState(entry)).toBe('attached');
+  });
+
+  it('returns detached when the session is alive but nothing hosts it', () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    expect(plugin.describeSessionState(entry)).toBe('detached');
+  });
+});
+
+describe('TerminalPlugin.openShellPicker', () => {
+  it('opens a ShellPickerModal instance', () => {
+    const plugin = makePlugin();
+    expect(() => plugin.openShellPicker()).not.toThrow();
+  });
+});
+
+describe('TerminalPlugin.switchToSession', () => {
+  it('shows a notice when the id is unknown', async () => {
+    const plugin = makePlugin();
+    await plugin.switchToSession('shell-99');
+    expect(__getNotices().at(-1)?.message).toBe('Shell not found.');
+  });
+
+  it('reveals the existing leaf when another view already hosts the session', async () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    view.getSessionId = vi.fn().mockReturnValue(entry.id);
+    leaf.view = view;
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+    await plugin.switchToSession(entry.id);
+    expect(reveal).toHaveBeenCalledWith(leaf);
+  });
+
+  it('attaches the active TerminalView to the chosen session when no other leaf hosts it', async () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const activeLeaf = new WorkspaceLeaf();
+    const activeView = new TerminalView(activeLeaf as never, plugin as never);
+    activeView.getSessionId = vi.fn().mockReturnValue('shell-99');
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
+    vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(activeView);
+    await plugin.switchToSession(entry.id);
+    expect(activeView.attachToSession).toHaveBeenCalledWith(entry.id);
+  });
+
+  it('ignores existing leaves that host a different session or non-terminal view', async () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    const otherLeaf = new WorkspaceLeaf();
+    const otherView = new TerminalView(otherLeaf as never, plugin as never);
+    otherView.getSessionId = vi.fn().mockReturnValue('shell-99');
+    otherLeaf.view = otherView;
+    const foreignLeaf = new WorkspaceLeaf();
+    foreignLeaf.view = { render: vi.fn() };
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([otherLeaf, foreignLeaf]);
+    vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(null);
+    const leaf = new WorkspaceLeaf();
+    vi.spyOn(plugin.app.workspace, 'getLeaf').mockReturnValue(leaf);
+    await plugin.switchToSession(entry.id);
+    expect(leaf.setViewState).toHaveBeenCalled();
+  });
+
+  it('opens a new leaf attached to the session when there is no active terminal view', async () => {
+    const plugin = makePlugin();
+    const entry = plugin.createSession(80, 24);
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
+    vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(null);
+    const leaf = new WorkspaceLeaf();
+    const getLeafSpy = vi.spyOn(plugin.app.workspace, 'getLeaf').mockReturnValue(leaf);
+    const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+    await plugin.switchToSession(entry.id);
+    expect(getLeafSpy).toHaveBeenCalledWith('tab');
+    expect(leaf.setViewState).toHaveBeenCalledWith({
+      type: TERMINAL_VIEW_TYPE,
+      active: true,
+      state: { sessionId: entry.id },
+    });
+    expect(reveal).toHaveBeenCalledWith(leaf);
   });
 });
 
@@ -335,6 +484,7 @@ describe('TerminalPlugin.onload', () => {
     expect(plugin.__findCommand('kill-shell')).toBeDefined();
     expect(plugin.__findCommand('restart-shell')).toBeDefined();
     expect(plugin.__findCommand('kill-all-shells')).toBeDefined();
+    expect(plugin.__findCommand('switch-shell')).toBeDefined();
     expect(plugin.__findCommand('run-self-test')).toBeDefined();
     plugin.onunload();
   });
@@ -446,6 +596,15 @@ describe('shell commands wiring', () => {
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'killAllSessions').mockReturnValue();
     plugin.__findCommand('kill-all-shells')?.callback?.();
+    expect(spy).toHaveBeenCalled();
+    plugin.onunload();
+  });
+
+  it('switch-shell calls openShellPicker', async () => {
+    const plugin = makePlugin();
+    await plugin.onload();
+    const spy = vi.spyOn(plugin, 'openShellPicker').mockReturnValue();
+    plugin.__findCommand('switch-shell')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });

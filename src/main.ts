@@ -1,4 +1,5 @@
 import { type FileSystemAdapter, Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
+import { ShellPickerModal } from './picker';
 import { PtySession, probePty } from './pty';
 import {
   DEFAULT_SETTINGS,
@@ -14,6 +15,8 @@ export interface SessionEntry {
   label: string;
   session: PtySession;
 }
+
+export type SessionState = 'attached' | 'detached' | 'exited';
 
 export default class TerminalPlugin extends Plugin {
   settings: TerminalPluginSettings = DEFAULT_SETTINGS;
@@ -48,6 +51,11 @@ export default class TerminalPlugin extends Plugin {
       id: 'kill-all-shells',
       name: 'Kill all shells',
       callback: () => this.killAllSessions(),
+    });
+    this.addCommand({
+      id: 'switch-shell',
+      name: 'Switch shell',
+      callback: () => this.openShellPicker(),
     });
     this.addCommand({
       id: 'run-self-test',
@@ -156,11 +164,62 @@ export default class TerminalPlugin extends Plugin {
   }
 
   getSession(id: string): SessionEntry | null {
-    const entry = this.sessions.get(id);
-    if (!entry || entry.session.isDead) {
-      return null;
+    return this.sessions.get(id) ?? null;
+  }
+
+  listSessions(): SessionEntry[] {
+    return Array.from(this.sessions.values());
+  }
+
+  isSessionAttached(id: string): boolean {
+    for (const leaf of this.app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof TerminalView && view.getSessionId() === id) {
+        return true;
+      }
     }
-    return entry;
+    return false;
+  }
+
+  describeSessionState(entry: SessionEntry): SessionState {
+    if (entry.session.isDead) {
+      return 'exited';
+    }
+    return this.isSessionAttached(entry.id) ? 'attached' : 'detached';
+  }
+
+  async switchToSession(id: string): Promise<void> {
+    const entry = this.getSession(id);
+    if (!entry) {
+      new Notice('Shell not found.');
+      return;
+    }
+    const { workspace } = this.app;
+    // If some leaf already hosts this session, just reveal it. Moving a live
+    // session between leaves creates a tug-of-war over the same writer.
+    for (const leaf of workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof TerminalView && view.getSessionId() === id) {
+        await workspace.revealLeaf(leaf);
+        return;
+      }
+    }
+    const activeView = this.findActiveTerminalView();
+    if (activeView) {
+      activeView.attachToSession(id);
+      return;
+    }
+    const leaf = workspace.getLeaf('tab');
+    await leaf.setViewState({
+      type: TERMINAL_VIEW_TYPE,
+      active: true,
+      state: { sessionId: id },
+    });
+    await workspace.revealLeaf(leaf);
+  }
+
+  openShellPicker(): void {
+    new ShellPickerModal(this.app, this).open();
   }
 
   killSession(id: string): void {
@@ -188,7 +247,7 @@ export default class TerminalPlugin extends Plugin {
     }
   }
 
-  private findActiveTerminalView(): TerminalView | null {
+  findActiveTerminalView(): TerminalView | null {
     const view = this.app.workspace.getActiveViewOfType(TerminalView);
     return view instanceof TerminalView ? view : null;
   }

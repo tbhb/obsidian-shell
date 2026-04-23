@@ -742,6 +742,10 @@ export abstract class SuggestModal<T> extends Modal {
   abstract getSuggestions(query: string): T[] | Promise<T[]>;
   abstract renderSuggestion(value: T, el: HTMLElement): void;
   abstract onChooseSuggestion(item: T, evt: MouseEvent | KeyboardEvent): void;
+
+  setPlaceholder(placeholder: string): void {
+    this.inputEl.placeholder = placeholder;
+  }
 }
 
 // FuzzySuggestModal delegates the three SuggestModal abstracts to three

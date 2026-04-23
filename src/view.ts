@@ -177,6 +177,28 @@ export class TerminalView extends ItemView {
     this.focusTerminalIfActive();
   }
 
+  attachToSession(id: string): void {
+    if (!this.terminal) {
+      return;
+    }
+    const entry = this.plugin.getSession(id);
+    if (!entry) {
+      return;
+    }
+    if (this.sessionId === id) {
+      this.focusTerminalIfActive();
+      return;
+    }
+    this.session?.detach();
+    this.terminal.clear();
+    this.sessionId = entry.id;
+    this.label = entry.label;
+    entry.session.attach((data) => this.terminal?.write(data));
+    this.session = entry.session;
+    this.refreshTabTitle();
+    this.focusTerminalIfActive();
+  }
+
   onResize(): void {
     this.fitAddon?.fit();
   }
