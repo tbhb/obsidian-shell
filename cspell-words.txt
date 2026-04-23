@@ -6,6 +6,7 @@ collab
 Consolas
 cooldown
 dependabot
+EPERM
 Fira
 gitignored
 husky

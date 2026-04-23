@@ -1,9 +1,11 @@
 ABI
 actionlint
 APIs
+args
 BEM
 Biome
 BRAT
+distro
 bundler
 CI
 CodeMirror
@@ -46,6 +48,7 @@ SLSA
 subcommand
 subtree
 Tailwind
+toolchain
 tsc
 [Tt]sconfigs?
 [Tt]ypecheck
@@ -54,4 +57,5 @@ vite-sample-plugin
 Vitest
 walkthrough
 WSL
+Xcode
 yamllint
