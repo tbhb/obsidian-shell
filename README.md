@@ -1,14 +1,52 @@
 # obsidian-terminal
 
-An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] and [node-pty][node-pty]. Desktop only.
+An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] and [node-pty][node-pty]. Desktop only. Bootstrapped from [obsidian-vite-sample-plugin][scaffold].
 
 [obsidian]: https://obsidian.md/
 [xtermjs]: https://xtermjs.org/
 [node-pty]: https://github.com/microsoft/node-pty
-
-**Status:** scaffolding stage. The plugin boots and registers an empty settings tab. The terminal view and pseudoterminal backend land in follow-up work. Bootstrapped from [obsidian-vite-sample-plugin][scaffold].
-
 [scaffold]: https://github.com/tbhb/obsidian-vite-sample-plugin
+
+## Features
+
+- Multi-session shells, one shell per Obsidian leaf. Tab labels number sessions Shell 1, Shell 2, and so on.
+- Sessions survive pane drags and leaf closures. Reopen a detached shell from the sidebar or the fuzzy picker and its scrollback comes back with you.
+- Left-sidebar `Shells` panel with a live list, state badges for attached, detached, and exited sessions, click-to-switch, and per-row stop buttons. Reachable from a ribbon icon.
+- Obsidian theme integration. The `Follow Obsidian theme` toggle maps the vault's CSS variables into xterm's background, foreground, cursor, and selection colors.
+- WebGL rendering that matches VS Code's terminal, with a DOM fallback for machines without a GPU context.
+- Settings for shell path and arguments, starting directory strategy, font family with a monospace detector, font size, line height, cursor style and blink, scrollback, and copy on selection.
+- First enable auto-opens a shell. Later enables and Hot Reload cycles leave the workspace alone.
+
+## Commands
+
+- **Open shell** reveals an existing terminal or opens one in the right sidebar.
+- **New shell** always opens a fresh shell in a new tab.
+- **Switch shell** opens a fuzzy picker of every tracked session.
+- **Kill shell** and **Restart shell** act on the active terminal leaf.
+- **Kill all shells** ends every session at once.
+- **Open shells sidebar** reveals the `Shells` panel. The ribbon icon does the same.
+- **Run self-test** spawns `uname` through node-pty and surfaces the output via a Notice. Handy when diagnosing a native-binary problem after a rebuild.
+
+## Install
+
+The plugin targets desktop Obsidian. The mobile app skips the plugin because node-pty can't load there.
+
+Clone the repository into a vault's plugin directory. Install dependencies. Compile the native module against Obsidian's Electron runtime. Then build the plugin:
+
+```bash
+cd /path/to/vault/.obsidian/plugins
+git clone https://github.com/tbhb/obsidian-terminal.git
+cd obsidian-terminal
+pnpm install
+pnpm rebuild:native
+pnpm build
+```
+
+Then toggle `Terminal` on under **Settings → Community plugins**. The first enable opens a starter shell. Future reloads won't.
+
+`pnpm rebuild:native` runs [`@electron/rebuild`][electron-rebuild] against Electron 39 headers and produces `node_modules/node-pty/build/Release/pty.node`. Re-run it any time node-pty bumps or the pinned Electron version changes.
+
+[electron-rebuild]: https://github.com/electron/rebuild
 
 ## Scripts
 
@@ -16,30 +54,67 @@ An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] an
 pnpm install         # install dependencies
 pnpm dev             # vite build --watch (emits main.js into this folder)
 pnpm build           # typecheck + production build
+pnpm rebuild:native  # electron-rebuild against the pinned Electron version
 pnpm test            # vitest run
 pnpm test:watch      # vitest in watch mode
-pnpm test:coverage   # vitest run --coverage (v8 provider, html+json reports)
-pnpm check           # biome check (lint + format + organize imports) + eslint
+pnpm test:coverage   # vitest run --coverage, v8 provider, html+json reports
+pnpm check           # biome check, lint + format + organize imports, then eslint
 pnpm check:fix       # biome check --write + eslint --fix
-pnpm lint            # biome lint + eslint (no formatter)
+pnpm lint            # biome lint + eslint, no formatter
 pnpm lint:prose      # vale with file-discovery glob exclusions
 pnpm format          # biome format --write
 ```
 
-### Stylesheet pipeline (Tailwind CSS 4)
+## Layout
 
-Styling uses Tailwind CSS 4 via `@tailwindcss/vite`. The entry lives at `src/styles.css`. From there, `src/main.ts` imports it, and Vite emits the compiled result as `styles.css` in the plugin root alongside `main.js`, via `build.lib.cssFileName`. Both files stay out of git. Publish them through GitHub releases.
+```text
+obsidian-terminal/
+├── manifest.json            # Obsidian plugin manifest
+├── versions.json            # version -> minAppVersion map
+├── vite.config.ts           # Vite 8 / Rolldown library-mode config
+├── vitest.config.ts         # Vitest config, aliases `obsidian` to a stub
+├── tsconfig.json            # strict TS, ES2022, bundler resolution
+├── biome.json               # Biome lint + format config
+├── eslint.config.mts        # ESLint flat config, only eslint-plugin-obsidianmd
+├── src/
+│   ├── main.ts              # plugin entry, commands, ribbon, event bus
+│   ├── pty.ts               # node-pty loader + PtySession wrapper + self-test
+│   ├── view.ts              # TerminalView, an ItemView hosting xterm.js
+│   ├── sidebar.ts           # ShellsView, the left-sidebar list
+│   ├── picker.ts            # Switch shell FuzzySuggestModal
+│   ├── settings.ts          # settings schema + mergeSettings + tab
+│   └── styles.css           # Tailwind entry + @theme inline block
+└── test/
+    ├── __mocks__/obsidian.ts  # runtime stub of the obsidian module
+    ├── setup.ts               # DOM helper polyfills
+    ├── main.test.ts
+    ├── settings.test.ts
+    ├── sidebar.test.ts
+    └── picker.test.ts
+```
+
+## Notes
+
+- The plugin targets `minAppVersion` 1.7.2 so it can call `onUserEnable`, `onExternalSettingsChange`, and the modern view-state APIs.
+- Node 22.22.0 pinned via `.node-version` matches Obsidian 1.12's Electron 39 runtime. node-pty prebuilds target a specific ABI, so the pinned Node also matches what `@electron/rebuild` needs for headers.
+- Vite emits `main.js` and `styles.css` into the plugin root, not `dist/`, so Obsidian loads them directly. Both stay out of git.
+- Sessions live on the plugin, not the view, so closing a leaf detaches the xterm without ending the shell. Reattaching replays buffered output.
+- Coverage excludes `src/pty.ts` and `src/view.ts` because xterm needs a real renderer and node-pty needs the compiled binary. Every other source module stays at 100%.
+
+## Stylesheet pipeline (Tailwind CSS 4)
+
+Styling uses Tailwind CSS 4 via `@tailwindcss/vite`. The entry lives at `src/styles.css`. From there, `src/main.ts` imports it, and Vite emits the compiled result as `styles.css` in the plugin root alongside `main.js`, via `build.lib.cssFileName`.
 
 Two deliberate choices for Obsidian compatibility:
 
 - **Preflight off.** Tailwind's CSS reset conflicts with Obsidian's theme, so `src/styles.css` imports `tailwindcss/theme.css` and `tailwindcss/utilities.css` layers individually and skips `tailwindcss/preflight.css`.
-- **All utilities prefixed with `tw:`** (v4's variant syntax). Usage: `createEl('p', { cls: 'tw:mt-4 tw:font-semibold tw:text-text-muted' })`, with no risk of collision against core CSS, other plugins, or user snippets.
+- **Utilities prefixed with `tw:`**, per v4's variant syntax. Usage: `createEl('p', { cls: 'tw:mt-4 tw:font-semibold tw:text-text-muted' })`, no risk of collision against core CSS, other plugins, or user snippets.
 
-`@theme inline` in `src/styles.css` maps Obsidian's [CSS variables][obsidian-css-variables] into Tailwind's color palette, so utilities like `tw:text-text-muted` and `tw:bg-background-primary` resolve against the live Obsidian theme and track light/dark switching automatically. Add new mappings in the same block.
+`@theme inline` in `src/styles.css` maps Obsidian's [CSS variables][obsidian-css-variables] into Tailwind's color palette so utilities like `tw:text-text-muted` and `tw:bg-background-primary` resolve against the live Obsidian theme and track light and dark switching automatically. Add new mappings in the same block.
 
 [obsidian-css-variables]: https://docs.obsidian.md/Reference/CSS+variables/CSS+variables
 
-### Releases (release-please + BRAT)
+## Releases (release-please + BRAT)
 
 [release-please] fully automates releases:
 
@@ -59,45 +134,18 @@ Two deliberate choices for Obsidian compatibility:
 
 [brat]: https://tfthacker.com/brat-developers
 
+Release assets must include the compiled `node_modules/node-pty/build/Release/*.node` binary plus the node-pty wrapper. Bundle the relevant subtree into the release zip so BRAT users get a working native module without running `pnpm rebuild:native` themselves.
+
 **Required `GITHUB_TOKEN` scopes.** The `release` workflow runs with `contents: write` and `pull-requests: write`, which the built-in `GITHUB_TOKEN` provides. No PATs required.
 
-### Linting split
+## Linting split
 
 - **Biome** handles general linting, formatting, and import sorting. Fast, zero-config, single binary. Config: `biome.json`.
-- **[ESLint][eslint]** exists solely to run [`eslint-plugin-obsidianmd`][obsidianmd-eslint], which enforces Obsidian [submission requirements][obsidian-submission] that Biome doesn't cover: sentence-case UI strings, no `innerHTML`, no `TFile` casts, settings-tab headings, command naming, and so on. Config: `eslint.config.mts`.
+- **[ESLint][eslint]** runs [`eslint-plugin-obsidianmd`][obsidianmd-eslint], which enforces Obsidian [submission requirements][obsidian-submission] that Biome can't cover: sentence-case UI strings, no `innerHTML`, no `TFile` casts, settings-tab headings, command naming, and so on. Config: `eslint.config.mts`.
 
 [eslint]: https://eslint.org/
 [obsidianmd-eslint]: https://github.com/obsidianmd/eslint-plugin
 [obsidian-submission]: https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins
-
-## Layout
-
-```text
-obsidian-terminal/
-├── manifest.json            # Obsidian plugin manifest
-├── versions.json            # version -> minAppVersion map
-├── vite.config.ts           # Vite 8 / Rolldown library-mode config
-├── vitest.config.ts         # Vitest config (aliases `obsidian` to a stub)
-├── tsconfig.json            # strict TS, ES2022, bundler resolution
-├── biome.json               # Biome lint + format config
-├── eslint.config.mts        # ESLint flat config, only eslint-plugin-obsidianmd
-├── src/
-│   ├── main.ts              # Plugin entry
-│   ├── settings.ts          # Settings tab + DEFAULT_SETTINGS + mergeSettings
-│   └── styles.css           # Tailwind entry + @theme inline block
-└── test/
-    ├── __mocks__/obsidian.ts  # runtime stub of the obsidian module
-    ├── setup.ts               # DOM helper polyfills (createEl, empty, ...)
-    ├── main.test.ts
-    └── settings.test.ts
-```
-
-## Notes
-
-- The `obsidian` npm package ships types only, so tests run against a local stub aliased in `vitest.config.ts`. Extend `test/__mocks__/obsidian.ts` as you reach for more of the API.
-- Vite emits `main.js` into the plugin folder (not `dist/`) so Obsidian loads it directly. Git ignores it. Publish it through GitHub releases.
-- The plugin targets `minAppVersion` 1.7.2 to use `onUserEnable` and `onExternalSettingsChange`.
-- Node 22.22.0 pinned via `.node-version` matches Obsidian 1.12's Electron 39 runtime. node-pty's native binaries require that alignment.
 
 ## Development
 

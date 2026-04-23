@@ -1,4 +1,6 @@
+ABI
 actionlint
+APIs
 BEM
 Biome
 BRAT
@@ -17,6 +19,7 @@ jsdom
 Lezer
 LTS
 MIT
+monospace
 match(?:er|ers|ing)
 mock(?:s|ed|ing)?
 nano-staged
@@ -26,6 +29,7 @@ params
 parenthetical[s]?
 [Pp]npm
 POSIX
+prebuild[s]?
 [Pp]reflight
 proselint
 pseudoterminal
@@ -34,11 +38,13 @@ repo
 Rolldown
 rumdl
 scaffold
+scrollback
 semver
 shellcheck
 sigstore
 SLSA
 subcommand
+subtree
 Tailwind
 tsc
 [Tt]sconfigs?

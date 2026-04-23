@@ -23,6 +23,7 @@ oneline
 parentheticals
 pipefail
 pnpm
+prebuilds
 rolldown
 reviewdog
 rumdl
