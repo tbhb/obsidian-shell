@@ -1,6 +1,6 @@
 {
   "name": "obsidian-shell",
-  "version": "0.1.0",
+  "version": "0.1.1-beta.1",
   "description": "Embedded xterm.js terminal backed by node-pty.",
   "private": true,
   "type": "module",
