@@ -13,6 +13,7 @@ CodeMirror
 commitlint
 cwd
 Corepack
+dev
 [Cc]onfigs?
 cspell
 ESLint
@@ -40,6 +41,7 @@ proselint
 pseudoterminal
 rolldown
 repo
+rollup
 Rolldown
 rumdl
 scaffold

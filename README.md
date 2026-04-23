@@ -134,7 +134,7 @@ Two deliberate choices for Obsidian compatibility:
 
 [brat]: https://tfthacker.com/brat-developers
 
-Release assets must include the compiled `node_modules/node-pty/build/Release/*.node` binary plus the node-pty wrapper. Bundle the relevant subtree into the release zip so BRAT users get a working native module without running `pnpm rebuild:native` themselves.
+Release assets ship `main.js`, `manifest.json`, `styles.css`, and a flat `pty-<platform>-<arch>.node` file per supported platform. BRAT copies every asset into the plugin folder. The bundled node-pty loader in `main.js` selects the native matching the user's platform at runtime.
 
 **Required `GITHUB_TOKEN` scopes.** The `release` workflow runs with `contents: write` and `pull-requests: write`, which the built-in `GITHUB_TOKEN` provides. No PATs required.
 

@@ -139,7 +139,7 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 - Stable channel: push conventional commits to `main`. release-please opens a release PR that bumps `package.json` and `manifest.json`, appends to `versions.json`, and updates `CHANGELOG.md`. Merging creates a bare-semver tag like `1.2.0`, with no `v` prefix per Obsidian's convention, and a GitHub release. A follow-up job builds, attests via [SLSA provenance][slsa], then uploads the assets.
 - Beta channel: push to the `beta` branch. Same flow, but driven by `.github/release-please-config.beta.json`. Produces `1.2.0-beta.1`-style tags marked as pre-releases. BRAT testers subscribe to these automatically.
 - Only `feat:`, `fix:`, and commits with breaking changes trigger a release PR. `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:`, and `build:` commits land without opening one.
-- Release assets must include the compiled `node_modules/node-pty/build/Release/*.node` binary. Bundle the node-pty subtree the plugin needs at runtime into the release zip.
+- Release assets ship as flat files: `main.js`, `manifest.json`, `styles.css`, and one `pty-<platform>-<arch>.node` per supported platform. BRAT copies each asset into the plugin folder verbatim; node-pty's bundled loader picks the file matching `process.platform + '-' + process.arch`.
 - Don't hand-edit `manifest.json` `version`, `package.json` `version`, `versions.json`, or `CHANGELOG.md`. Don't create tags manually. release-please owns those files.
 
 [release-please]: https://github.com/googleapis/release-please-action
@@ -154,8 +154,8 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 - Gate desktop-only features behind `Platform.isMobile` checks.
 - Use `createEl`, `createDiv`, and `createSpan` helpers. Never set `innerHTML`.
 - The plugin id `obsidian-shell` must match the folder name under `.obsidian/plugins/` for local development.
-- `src/pty.ts` loads `node-pty` via Electron's `window.require` at runtime. Never `import` it statically. Vite would try to bundle the native binary and fail.
-- Run `pnpm rebuild:native` any time `node-pty` updates or the pinned Electron version changes. The compiled `node_modules/node-pty/build/Release/*.node` ships inside the plugin folder at release time.
+- `src/pty.ts` statically imports `node-pty`. Vite bundles node-pty's JS wrapper into `main.js`, and a rollup transform in `vite.config.ts` rewrites node-pty's `loadNativeModule` helper to resolve a flat `pty-<platform>-<arch>.node` sibling of `main.js` at runtime, with a fallback to `node_modules/node-pty/build/Release/pty.node` for local development.
+- Run `pnpm rebuild:native` any time `node-pty` updates or the pinned Electron version changes. The rebuilt binary lands at `node_modules/node-pty/build/Release/pty.node` and the dev fallback path picks it up automatically.
 - Obsidian doesn't guarantee `view.setState` fires before `onOpen` on newly created leaves. `ShellView.onOpen` seeds `sessionId` from `leaf.getViewState().state` before `bindSession` runs, and `setState` discards any placeholder session `bindSession` spawned when it arrives post-open with a different id. Preserve that ordering when editing the view.
 - `setState` also fires with unrelated state on workspace restore, layout operations, and internal `setViewState` calls. Only update `sessionId` when `setState` explicitly provides a string. Clobbering the field to `null` strands live bindings.
 - xterm.js can't resolve CSS custom properties through canvas metrics. Pass a concrete font stack resolved from `getComputedStyle(el).getPropertyValue('--font-monospace')` before handing it to `new Terminal` or `applySettings`.

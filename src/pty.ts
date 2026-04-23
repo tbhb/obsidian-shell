@@ -1,21 +1,11 @@
-import path from 'node:path';
 import process from 'node:process';
-import type * as NodePty from 'node-pty';
+import * as nodePty from 'node-pty';
 import type { FileSystemAdapter, Plugin } from 'obsidian';
 
-// Electron's require bypasses Vite's bundler and loads CommonJS modules from
-// the real filesystem. Static `import 'node-pty'` would pull the module into
-// the bundle, which breaks because node-pty's native binary cannot be bundled
-// and because the compiled binary lives outside the bundled main.js at runtime.
-type ElectronRequire = (id: string) => unknown;
-
-function getElectronRequire(): ElectronRequire {
-  const win = window as typeof globalThis & { require?: ElectronRequire };
-  if (typeof win.require !== 'function') {
-    throw new Error('obsidian-shell requires desktop Obsidian (window.require unavailable)');
-  }
-  return win.require;
-}
+// node-pty is bundled into main.js via Vite, with its loadNativeModule helper
+// patched (see vite.config.ts) to resolve a flat <name>-<platform>-<arch>.node
+// sibling of main.js in the released plugin, or to fall back to
+// node_modules/node-pty/build/Release/ during local development.
 
 function getPluginDir(plugin: Plugin): string {
   const adapter = plugin.app.vault.adapter as FileSystemAdapter;
@@ -32,11 +22,6 @@ function getVaultPath(plugin: Plugin): string {
     throw new Error('obsidian-shell requires a filesystem vault');
   }
   return adapter.getBasePath();
-}
-
-export function loadNodePty(plugin: Plugin): typeof NodePty {
-  const nodePtyPath = path.join(getPluginDir(plugin), 'node_modules', 'node-pty');
-  return getElectronRequire()(nodePtyPath) as typeof NodePty;
 }
 
 export interface PtySessionOptions {
@@ -56,14 +41,13 @@ const MAX_BUFFER_BYTES = 200_000;
 export type PtyDataWriter = (data: string) => void;
 
 export class PtySession {
-  private proc: NodePty.IPty;
+  private proc: nodePty.IPty;
   private buffer = '';
   private writer: PtyDataWriter | null = null;
   private dead = false;
   private exitHandler: (() => void) | null = null;
 
   constructor(plugin: Plugin, options: PtySessionOptions = {}) {
-    const pty = loadNodePty(plugin);
     const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
     // Spawn as a login shell so /etc/zprofile (or /etc/profile for bash) runs
     // path_helper on macOS and adds /opt/homebrew/bin, /usr/local/bin, etc.
@@ -71,7 +55,7 @@ export class PtySession {
     // .zshrc fails to locate tools like mise and starship.
     const shellArgs = options.shellArgs ?? ['-l'];
     const cwd = options.cwd ?? getVaultPath(plugin);
-    this.proc = pty.spawn(shell, shellArgs, {
+    this.proc = nodePty.spawn(shell, shellArgs, {
       name: 'xterm-256color',
       cols: options.cols ?? 80,
       rows: options.rows ?? 24,
@@ -134,9 +118,8 @@ export class PtySession {
 }
 
 export async function probePty(plugin: Plugin): Promise<string> {
-  const pty = loadNodePty(plugin);
   return new Promise<string>((resolve, reject) => {
-    const proc = pty.spawn('/usr/bin/uname', ['-a'], {
+    const proc = nodePty.spawn('/usr/bin/uname', ['-a'], {
       name: 'xterm-color',
       cols: 80,
       rows: 24,

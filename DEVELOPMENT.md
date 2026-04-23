@@ -128,7 +128,7 @@ Vitest runs with `jsdom` against a mock of the `obsidian` module. Read `test/__m
 
 The gate enforces 100% coverage across statements, branches, functions, and lines. Thresholds live in `vitest.config.ts` and fail the build if any metric slips. The `perFile: true` setting means a single uncovered file breaks CI, not just the average.
 
-`vitest.config.ts` excludes `src/pty.ts` and `src/view.ts` from coverage because they need Electron's `window.require` and a real canvas or WebGL renderer. Exercise those modules end-to-end inside Obsidian via the self-test command and the terminal view.
+`vitest.config.ts` excludes `src/pty.ts` and `src/view.ts` from coverage because they need node-pty's compiled native binary and a real canvas or WebGL renderer. Exercise those modules end-to-end inside Obsidian via the self-test command and the terminal view.
 
 When a genuine need arises to exclude a line from a covered module, add `/* v8 ignore next */` with a comment explaining why. Don't lower the thresholds without a documented reason.
 
@@ -194,7 +194,7 @@ Releases run through [release-please][release-please] on every push to `main`. T
 
 Review the release PR and merge it via squash. Merging creates a GitHub release tagged with bare semver, with no `v` prefix per Obsidian's convention. A follow-up job then runs `pnpm build`, generates a [SLSA provenance][slsa] attestation via sigstore, then uploads `main.js`, `main.js.map`, `manifest.json`, and `styles.css` as release assets.
 
-Release assets must also include the compiled node-pty subtree. BRAT installs unpack the zip into `.obsidian/plugins/<id>/` verbatim, so `node_modules/node-pty/build/Release/*.node` needs to travel with the build. Update the release workflow when the packaging strategy changes.
+Release assets also ship a flat `pty-<platform>-<arch>.node` file for each supported platform: `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, and `win32-x64`. BRAT copies every release asset into `.obsidian/plugins/<id>/` verbatim, and the bundled node-pty loader in `main.js` picks the binary matching `process.platform + '-' + process.arch`. The release workflow runs a build matrix per platform, collects each native, attests all assets via sigstore, then uploads the set.
 
 Pushes to the `beta` branch run the same flow through `.github/release-please-config.beta.json`, producing pre-release tags like `1.2.0-beta.1` that only [BRAT][brat] testers see.
 
