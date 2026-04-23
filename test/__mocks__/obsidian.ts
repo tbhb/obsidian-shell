@@ -227,6 +227,7 @@ export class FileSystemAdapter {
 
 export class App {
   workspace: {
+    activeLeaf: WorkspaceLeaf | null;
     getLeavesOfType: (type: string) => WorkspaceLeaf[];
     getRightLeaf: (split: boolean) => WorkspaceLeaf | null;
     getLeaf: (mode?: boolean | 'split' | 'tab' | 'window') => WorkspaceLeaf;
@@ -249,6 +250,7 @@ export class App {
     this.secretStorage = new SecretStorage();
     const eventHandlers: CapturedWorkspaceEvent[] = [];
     this.workspace = {
+      activeLeaf: null,
       getLeavesOfType: vi.fn((_type: string) => [] as WorkspaceLeaf[]),
       getRightLeaf: vi.fn((_split: boolean) => null),
       getLeaf: vi.fn((_mode?: boolean | 'split' | 'tab' | 'window') => new WorkspaceLeaf()),

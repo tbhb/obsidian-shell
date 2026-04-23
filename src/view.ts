@@ -143,6 +143,7 @@ export class TerminalView extends ItemView {
     terminal.onResize(({ cols, rows }) => this.session?.resize(cols, rows));
 
     this.bindSession();
+    this.focusTerminalIfActive();
   }
 
   async onClose(): Promise<void> {
@@ -173,6 +174,7 @@ export class TerminalView extends ItemView {
     this.session = null;
     this.terminal.clear();
     this.bindSession();
+    this.focusTerminalIfActive();
   }
 
   onResize(): void {
@@ -207,6 +209,16 @@ export class TerminalView extends ItemView {
     entry.session.attach((data) => this.terminal?.write(data));
     this.session = entry.session;
     this.refreshTabTitle();
+  }
+
+  private focusTerminalIfActive(): void {
+    // Only steal focus when this view is already the active one. On startup
+    // Obsidian re-opens every view, and we do not want to yank focus out of
+    // whichever pane the user is working in.
+    if (this.app.workspace.getActiveViewOfType(TerminalView) !== this) {
+      return;
+    }
+    requestAnimationFrame(() => this.terminal?.focus());
   }
 
   private reserveStatusBarSpace(): void {
