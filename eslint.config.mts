@@ -41,6 +41,7 @@ export default tseslint.config(
     'version-bump.mjs',
     'versions.json',
     'test',
+    'e2e',
     '.husky',
   ]),
 );

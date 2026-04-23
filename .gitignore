@@ -32,6 +32,9 @@ data.json
 
 # test output
 coverage
+/test-results
+/e2e/.wdio-logs
+/e2e/.tmp
 
 # logs
 *.log

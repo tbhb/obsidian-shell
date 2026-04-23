@@ -25,7 +25,9 @@ oneline
 parentheticals
 pipefail
 pnpm
+posix
 prebuilds
+ptmx
 rolldown
 reviewdog
 rumdl
@@ -33,6 +35,7 @@ shellcheck
 sigstore
 Sönke
 SLSA
+spawnp
 tailwindcss
 tbhb
 tfthacker
@@ -42,6 +45,7 @@ unsuffixed
 vite
 vitejs
 vitest
+wdio
 webgl
 yamllint
 yamllintignore
