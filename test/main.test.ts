@@ -35,6 +35,7 @@ vi.mock('../src/view', () => ({
     applySettings = vi.fn();
     reattachSession = vi.fn();
     attachToSession = vi.fn();
+    focusTerminal = vi.fn();
     getSessionId = vi.fn(() => null as string | null);
   },
 }));
@@ -391,6 +392,7 @@ describe('TerminalPlugin.switchToSession', () => {
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.switchToSession(entry.id);
     expect(reveal).toHaveBeenCalledWith(leaf);
+    expect(view.focusTerminal).toHaveBeenCalled();
   });
 
   it('attaches the active TerminalView to the chosen session when no other leaf hosts it', async () => {
@@ -428,6 +430,8 @@ describe('TerminalPlugin.switchToSession', () => {
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(null);
     const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    leaf.view = view;
     const getLeafSpy = vi.spyOn(plugin.app.workspace, 'getLeaf').mockReturnValue(leaf);
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.switchToSession(entry.id);
@@ -438,6 +442,7 @@ describe('TerminalPlugin.switchToSession', () => {
       state: { sessionId: entry.id },
     });
     expect(reveal).toHaveBeenCalledWith(leaf);
+    expect(view.focusTerminal).toHaveBeenCalled();
   });
 });
 

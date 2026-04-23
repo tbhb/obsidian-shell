@@ -31,6 +31,7 @@ vi.mock('../src/view', () => ({
     applySettings = vi.fn();
     reattachSession = vi.fn();
     attachToSession = vi.fn();
+    focusTerminal = vi.fn();
     getSessionId = vi.fn(() => null as string | null);
   },
 }));

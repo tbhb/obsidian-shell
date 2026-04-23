@@ -209,7 +209,7 @@ export class TerminalView extends ItemView {
     this.session = null;
     this.terminal.clear();
     this.bindSession();
-    this.focusTerminalIfActive();
+    this.focusTerminal();
   }
 
   attachToSession(id: string): void {
@@ -232,7 +232,7 @@ export class TerminalView extends ItemView {
     this.session = entry.session;
     this.sessionCreatedByThisView = false;
     this.refreshTabTitle();
-    this.focusTerminalIfActive();
+    this.focusTerminal();
     this.plugin.notifySessionsChanged();
   }
 
@@ -272,6 +272,13 @@ export class TerminalView extends ItemView {
     this.plugin.notifySessionsChanged();
   }
 
+  focusTerminal(): void {
+    // Unconditional focus for user-initiated paths (open, switch, restart).
+    // Workspace restore still goes through focusTerminalIfActive so we do
+    // not steal focus on startup.
+    requestAnimationFrame(() => this.terminal?.focus());
+  }
+
   private focusTerminalIfActive(): void {
     // Only steal focus when this view is already the active one. On startup
     // Obsidian re-opens every view, and we do not want to yank focus out of
@@ -279,7 +286,7 @@ export class TerminalView extends ItemView {
     if (this.app.workspace.getActiveViewOfType(TerminalView) !== this) {
       return;
     }
-    requestAnimationFrame(() => this.terminal?.focus());
+    this.focusTerminal();
   }
 
   private reserveStatusBarSpace(): void {

@@ -229,6 +229,7 @@ export default class TerminalPlugin extends Plugin {
       const view = leaf.view;
       if (view instanceof TerminalView && view.getSessionId() === id) {
         await workspace.revealLeaf(leaf);
+        view.focusTerminal();
         return;
       }
     }
@@ -244,6 +245,10 @@ export default class TerminalPlugin extends Plugin {
       state: { sessionId: id },
     });
     await workspace.revealLeaf(leaf);
+    const view = leaf.view;
+    if (view instanceof TerminalView) {
+      view.focusTerminal();
+    }
   }
 
   openShellPicker(): void {
