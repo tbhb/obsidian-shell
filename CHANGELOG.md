@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1-beta.1](https://github.com/tbhb/obsidian-shell/compare/0.1.0...0.1.1-beta.1) (2026-04-23)
+
+
+### Miscellaneous Chores
+
+* **release:** validate single-branch flow via 0.1.1-beta.1 ([9d26d5f](https://github.com/tbhb/obsidian-shell/commit/9d26d5fc41eda1bc2a3f4f89d0e1dc280692ab6e))
+
 ## 0.1.0 (2026-04-23)
 
 
