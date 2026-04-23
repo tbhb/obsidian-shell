@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": [
+    "**/*.d.ts",
+    "**/*.log",
+    ".vale/**/*",
+    "coverage/**/*",
+    "dist/**/*",
+    "main.js",
+    "main.js.map",
+    "node_modules/**/*",
+    "pnpm-lock.yaml",
+    "styles.css",
+    "styles.css.map",
+    "CHANGELOG.md"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "obsidian-vite-sample-plugin",
+      "path": "./cspell-words.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": ["obsidian-vite-sample-plugin"]
+}

@@ -1,0 +1,25 @@
+/*
+ * Stylesheet entry for obsidian-terminal.
+ *
+ * Vite + @tailwindcss/vite compile this file and emit it to the plugin root
+ * as `styles.css`, which Obsidian loads at runtime.
+ *
+ * Preflight is disabled and utilities are prefixed with `tw:` so the plugin
+ * never collides with Obsidian core CSS, other plugins, or user snippets.
+ */
+
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme) prefix(tw);
+@import 'tailwindcss/utilities.css' layer(utilities) prefix(tw);
+
+@theme inline {
+  --color-text-normal: var(--text-normal);
+  --color-text-muted: var(--text-muted);
+  --color-text-accent: var(--text-accent);
+  --color-text-faint: var(--text-faint);
+  --color-background-primary: var(--background-primary);
+  --color-background-secondary: var(--background-secondary);
+  --color-interactive-accent: var(--interactive-accent);
+  --color-interactive-normal: var(--interactive-normal);
+}

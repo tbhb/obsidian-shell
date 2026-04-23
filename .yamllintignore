@@ -1,0 +1,8 @@
+.vale/Google/
+.vale/proselint/
+.vale/write-good/
+.vale/ai-tells/
+.vale/ai-tells-commits/
+.vale/ai-tells-experimental/
+.vale/config/scripts/
+pnpm-lock.yaml

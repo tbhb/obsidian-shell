@@ -1,0 +1,187 @@
+---
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - beta
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  PNPM_VERSION: "10"
+  RUMDL_VERSION: "0.1.69"
+  VALE_VERSION: "3.14.1"
+  YAMLLINT_VERSION: "1.38.0"
+  # Opt JS-based actions into the Node 24 runtime early (the default flip
+  # happens 2026-06-02). Silences deprecation warnings on older actions.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5.0.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f  # v6.3.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint code (biome + eslint)
+        run: pnpm run lint
+
+      - name: Check spelling (cspell)
+        run: pnpm run lint:spelling
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+
+      - name: Lint YAML (yamllint via uvx)
+        run: uvx --from "yamllint==${YAMLLINT_VERSION}" yamllint --strict .
+
+      - name: Lint GitHub Actions workflows (actionlint)
+        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d  # v1.72.0
+        with:
+          fail_level: error
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5.0.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f  # v6.3.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (src + test)
+        run: pnpm run typecheck
+
+      - name: Build plugin
+        run: pnpm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: plugin-build
+          path: |
+            main.js
+            main.js.map
+            manifest.json
+            styles.css
+            styles.css.map
+          retention-days: 7
+          if-no-files-found: error
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5.0.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f  # v6.3.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests with coverage
+        run: pnpm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Install rumdl
+        run: |
+          set -euo pipefail
+          url="https://github.com/rvben/rumdl/releases/download/v${RUMDL_VERSION}/rumdl-v${RUMDL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL "$url" -o /tmp/rumdl.tar.gz
+          mkdir -p /tmp/rumdl
+          tar -xzf /tmp/rumdl.tar.gz -C /tmp/rumdl
+          sudo install -m 0755 "$(find /tmp/rumdl -type f -name rumdl -print -quit)" /usr/local/bin/rumdl
+          rumdl --version
+
+      - name: Install vale
+        run: |
+          set -euo pipefail
+          url="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          curl -fsSL "$url" -o /tmp/vale.tar.gz
+          mkdir -p /tmp/vale
+          tar -xzf /tmp/vale.tar.gz -C /tmp/vale
+          sudo install -m 0755 /tmp/vale/vale /usr/local/bin/vale
+          vale --version
+
+      - name: Cache Vale style packages
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
+        with:
+          path: |
+            .vale/Google
+            .vale/ai-tells
+            .vale/ai-tells-commits
+            .vale/ai-tells-experimental
+            .vale/proselint
+            .vale/write-good
+            .vale/config/scripts
+          key: vale-${{ env.VALE_VERSION }}-${{ hashFiles('.vale.ini') }}
+
+      - name: Sync Vale packages
+        run: vale sync
+
+      - name: Lint Markdown (rumdl)
+        run: rumdl check .
+
+      - name: Lint prose (vale)
+        run: vale --glob='!{.vale/**,node_modules/**,coverage/**,dist/**,CHANGELOG.md}' .
