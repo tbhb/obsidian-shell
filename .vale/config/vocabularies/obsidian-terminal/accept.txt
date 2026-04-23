@@ -1,5 +1,6 @@
 ABI
 actionlint
+allowlist
 APIs
 args
 BEM
@@ -10,6 +11,7 @@ bundler
 CI
 CodeMirror
 commitlint
+cwd
 Corepack
 [Cc]onfigs?
 cspell
@@ -29,6 +31,7 @@ nano-staged
 OIDC
 params
 parenthetical[s]?
+passthrough
 [Pp]npm
 POSIX
 prebuild[s]?
