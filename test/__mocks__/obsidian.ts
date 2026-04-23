@@ -788,7 +788,12 @@ export class Notice {
   hide = vi.fn();
 }
 
+export interface ViewStateResult {
+  history: boolean;
+}
+
 export class ItemView extends Component {
+  app: App = new App();
   leaf: WorkspaceLeaf;
   contentEl: HTMLElement;
 
@@ -807,6 +812,10 @@ export class ItemView extends Component {
   getIcon(): string {
     return '';
   }
+  getState(): Record<string, unknown> {
+    return {};
+  }
+  async setState(_state: unknown, _result: ViewStateResult): Promise<void> {}
   async onOpen(): Promise<void> {}
   async onClose(): Promise<void> {}
 }

@@ -44,6 +44,7 @@ export class TerminalView extends ItemView {
   private terminal: Terminal | null = null;
   private fitAddon: FitAddon | null = null;
   private webglAddon: WebglAddon | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private session: PtySession | null = null;
   private sessionId: string | null = null;
   private label: string = DEFAULT_DISPLAY_TEXT;
@@ -115,6 +116,16 @@ export class TerminalView extends ItemView {
 
     fitAddon.fit();
 
+    // Obsidian's own onResize hook does not fire for every layout change
+    // (for example, dragging a leaf from the right sidebar into a bottom
+    // split). Observe the host directly so the terminal always matches its
+    // container, which keeps tmux-style status lines from rendering past
+    // the leaf's bottom edge.
+    this.resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(() => this.fitAddon?.fit());
+    });
+    this.resizeObserver.observe(this.contentEl);
+
     terminal.onSelectionChange(() => {
       if (this.plugin.settings.behavior.copyOnSelection && terminal.hasSelection()) {
         void navigator.clipboard.writeText(terminal.getSelection());
@@ -135,6 +146,8 @@ export class TerminalView extends ItemView {
     // The plugin owns the PtySession so it survives the view being torn down
     // and recreated when the user drags the leaf into a different pane. Only
     // the xterm instance and the writer binding go away here.
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     this.session?.detach();
     this.session = null;
     this.webglAddon?.dispose();

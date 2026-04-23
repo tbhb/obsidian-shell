@@ -33,6 +33,7 @@
     height: 100%;
     padding: var(--size-4-2);
     background: var(--background-primary);
+    overflow: hidden;
   }
 
   .obsidian-terminal-host .xterm {
