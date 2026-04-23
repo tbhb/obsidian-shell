@@ -26,9 +26,62 @@ function getPluginDir(plugin: Plugin): string {
   return adapter.getFullPath(relDir);
 }
 
+function getVaultPath(plugin: Plugin): string {
+  const adapter = plugin.app.vault.adapter as FileSystemAdapter;
+  if (typeof adapter.getBasePath !== 'function') {
+    throw new Error('obsidian-terminal requires a filesystem vault');
+  }
+  return adapter.getBasePath();
+}
+
 export function loadNodePty(plugin: Plugin): typeof NodePty {
   const nodePtyPath = path.join(getPluginDir(plugin), 'node_modules', 'node-pty');
   return getElectronRequire()(nodePtyPath) as typeof NodePty;
+}
+
+export interface PtySessionOptions {
+  shell?: string;
+  cwd?: string;
+  env?: { [key: string]: string };
+  cols?: number;
+  rows?: number;
+}
+
+export class PtySession {
+  private proc: NodePty.IPty;
+
+  constructor(plugin: Plugin, options: PtySessionOptions = {}) {
+    const pty = loadNodePty(plugin);
+    const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
+    const cwd = options.cwd ?? getVaultPath(plugin);
+    this.proc = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols: options.cols ?? 80,
+      rows: options.rows ?? 24,
+      cwd,
+      env: options.env ?? (process.env as { [key: string]: string }),
+    });
+  }
+
+  onData(cb: (data: string) => void): void {
+    this.proc.onData(cb);
+  }
+
+  onExit(cb: (exitCode: number) => void): void {
+    this.proc.onExit(({ exitCode }) => cb(exitCode));
+  }
+
+  write(data: string): void {
+    this.proc.write(data);
+  }
+
+  resize(cols: number, rows: number): void {
+    this.proc.resize(cols, rows);
+  }
+
+  kill(): void {
+    this.proc.kill();
+  }
 }
 
 export async function probePty(plugin: Plugin): Promise<string> {

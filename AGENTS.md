@@ -37,7 +37,8 @@ The pre-commit hook runs `nano-staged`. The pre-push hook runs typecheck and tes
 src/
 ├── main.ts                 # plugin entry, imports styles.css
 ├── settings.ts             # settings tab + mergeSettings helper
-├── pty.ts                  # Electron-runtime loader for node-pty
+├── pty.ts                  # node-pty loader + PtySession wrapper
+├── view.ts                 # TerminalView (ItemView hosting xterm.js)
 └── styles.css              # Tailwind entry + @theme inline block
 test/
 ├── __mocks__/obsidian.ts   # runtime stub; the obsidian package ships types only
@@ -140,6 +141,8 @@ Add new technical terms to `cspell-words.txt`. Avoid em-dashes entirely, use com
 - The plugin id `obsidian-terminal` must match the folder name under `.obsidian/plugins/` for local development.
 - `src/pty.ts` loads `node-pty` via Electron's `window.require` at runtime. Never `import` it statically. Vite would try to bundle the native binary and fail.
 - Run `pnpm rebuild:native` any time `node-pty` updates or the pinned Electron version changes. The compiled `node_modules/node-pty/build/Release/*.node` ships inside the plugin folder at release time.
+- The coverage gate excludes `src/view.ts` and `src/pty.ts`. xterm.js needs a real canvas or WebGL renderer; node-pty needs a compiled native binary. Run both inside Obsidian, not in Vitest.
+- Tests that import `../src/main` transitively pull in `../src/view`, which pulls in `@xterm/xterm`. Stub `../src/view` with `vi.mock` so xterm never touches the jsdom DOM during tests.
 
 ## Rules at a glance
 
