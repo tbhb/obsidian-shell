@@ -1,4 +1,4 @@
-import { Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
+import { type FileSystemAdapter, Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
 import { probePty } from './pty';
 import {
   DEFAULT_SETTINGS,
@@ -36,6 +36,7 @@ export default class TerminalPlugin extends Plugin {
 
   async onExternalSettingsChange(): Promise<void> {
     await this.loadSettings();
+    this.refreshOpenViews();
   }
 
   async loadSettings(): Promise<void> {
@@ -45,6 +46,7 @@ export default class TerminalPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    this.refreshOpenViews();
   }
 
   async activateView(): Promise<void> {
@@ -60,6 +62,30 @@ export default class TerminalPlugin extends Plugin {
     }
     await leaf.setViewState({ type: TERMINAL_VIEW_TYPE, active: true });
     await workspace.revealLeaf(leaf);
+  }
+
+  resolveCwd(): string {
+    const { strategy, fixedPath } = this.settings.cwd;
+    const adapter = this.app.vault.adapter as FileSystemAdapter;
+    if (strategy === 'fixed-path' && fixedPath) {
+      return fixedPath;
+    }
+    if (strategy === 'note-dir') {
+      const file = this.app.workspace.getActiveFile();
+      if (file?.parent) {
+        return adapter.getFullPath(file.parent.path);
+      }
+    }
+    return adapter.getBasePath();
+  }
+
+  refreshOpenViews(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof TerminalView) {
+        view.applySettings(this.settings);
+      }
+    }
   }
 
   private async runPtySelfTest(): Promise<void> {

@@ -1,9 +1,9 @@
-import { __getNotices, __resetObsidianMocks, App, WorkspaceLeaf } from 'obsidian';
+import { __getNotices, __resetObsidianMocks, App, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TerminalPlugin from '../src/main';
 import { probePty } from '../src/pty';
 import { DEFAULT_SETTINGS } from '../src/settings';
-import { TERMINAL_VIEW_TYPE } from '../src/view';
+import { TERMINAL_VIEW_TYPE, TerminalView } from '../src/view';
 
 vi.mock('../src/pty', () => ({
   probePty: vi.fn(),
@@ -18,13 +18,16 @@ vi.mock('../src/view', () => ({
       public leaf: unknown,
       public plugin: unknown,
     ) {}
+    applySettings = vi.fn();
   },
 }));
 
 const mockedProbePty = vi.mocked(probePty);
 
 function makePlugin(): TerminalPlugin {
-  return new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
+  const plugin = new TerminalPlugin(new App() as never, { id: 'obsidian-terminal' } as never);
+  plugin.settings = structuredClone(DEFAULT_SETTINGS);
+  return plugin;
 }
 
 beforeEach(() => {
@@ -49,12 +52,80 @@ describe('TerminalPlugin.loadSettings', () => {
 });
 
 describe('TerminalPlugin.saveSettings', () => {
-  it('persists the current settings via saveData', async () => {
+  it('persists the current settings via saveData and refreshes open views', async () => {
     const plugin = makePlugin();
-    plugin.settings = { ...DEFAULT_SETTINGS };
     plugin.saveData = vi.fn();
+    const refreshSpy = vi.spyOn(plugin, 'refreshOpenViews');
     await plugin.saveSettings();
     expect(plugin.saveData).toHaveBeenCalledWith(plugin.settings);
+    expect(refreshSpy).toHaveBeenCalled();
+  });
+});
+
+describe('TerminalPlugin.resolveCwd', () => {
+  it('returns the vault base path for vault-root', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd.strategy = 'vault-root';
+    expect(plugin.resolveCwd()).toBe('/mock/vault');
+  });
+
+  it('returns the fixed path when set', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd = { strategy: 'fixed-path', fixedPath: '/Users/you/work' };
+    expect(plugin.resolveCwd()).toBe('/Users/you/work');
+  });
+
+  it('falls back to vault base for fixed-path with empty fixedPath', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd = { strategy: 'fixed-path', fixedPath: '' };
+    expect(plugin.resolveCwd()).toBe('/mock/vault');
+  });
+
+  it("returns the active note's folder for note-dir", () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd.strategy = 'note-dir';
+    const folder = new TFolder();
+    folder.path = 'notes';
+    const file = new TFile();
+    file.parent = folder;
+    vi.spyOn(plugin.app.workspace, 'getActiveFile').mockReturnValue(file);
+    expect(plugin.resolveCwd()).toBe('/mock/vault/notes');
+  });
+
+  it('falls back to vault base for note-dir when no active file', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd.strategy = 'note-dir';
+    vi.spyOn(plugin.app.workspace, 'getActiveFile').mockReturnValue(null);
+    expect(plugin.resolveCwd()).toBe('/mock/vault');
+  });
+
+  it('falls back to vault base for note-dir when the active file has no parent', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd.strategy = 'note-dir';
+    const file = new TFile();
+    file.parent = null;
+    vi.spyOn(plugin.app.workspace, 'getActiveFile').mockReturnValue(file);
+    expect(plugin.resolveCwd()).toBe('/mock/vault');
+  });
+});
+
+describe('TerminalPlugin.refreshOpenViews', () => {
+  it('applies settings to every matching TerminalView leaf', () => {
+    const plugin = makePlugin();
+    const leaf = new WorkspaceLeaf();
+    const view = new TerminalView(leaf as never, plugin as never);
+    leaf.view = view;
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    plugin.refreshOpenViews();
+    expect(view.applySettings).toHaveBeenCalledWith(plugin.settings);
+  });
+
+  it('ignores foreign views on the terminal leaf type', () => {
+    const plugin = makePlugin();
+    const leaf = new WorkspaceLeaf();
+    leaf.view = { render: vi.fn() };
+    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    expect(() => plugin.refreshOpenViews()).not.toThrow();
   });
 });
 
@@ -81,11 +152,13 @@ describe('TerminalPlugin.onload', () => {
 });
 
 describe('TerminalPlugin.onExternalSettingsChange', () => {
-  it('reloads settings', async () => {
+  it('reloads settings and refreshes open views', async () => {
     const plugin = makePlugin();
     plugin.loadData = vi.fn(async () => null);
+    const refreshSpy = vi.spyOn(plugin, 'refreshOpenViews');
     await plugin.onExternalSettingsChange();
     expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
+    expect(refreshSpy).toHaveBeenCalled();
   });
 });
 

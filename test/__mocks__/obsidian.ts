@@ -232,6 +232,7 @@ export class App {
     revealLeaf: (leaf: WorkspaceLeaf) => unknown;
     detachLeavesOfType: (type: string) => void;
     getActiveViewOfType: (type: unknown) => unknown;
+    getActiveFile: () => TFile | null;
     on: (event: string, cb: (...args: any[]) => any) => CapturedWorkspaceEvent;
     openLinkText: (linktext: string, sourcePath: string, newLeaf?: unknown) => Promise<void>;
     trigger: (name: string, ...args: any[]) => void;
@@ -251,6 +252,7 @@ export class App {
       revealLeaf: vi.fn(),
       detachLeavesOfType: vi.fn((_type: string) => undefined),
       getActiveViewOfType: vi.fn(() => null),
+      getActiveFile: vi.fn(() => null as TFile | null),
       on: vi.fn((event: string, cb: (...args: any[]) => any) => {
         const ref: CapturedWorkspaceEvent = { event, cb };
         eventHandlers.push(ref);
@@ -263,6 +265,7 @@ export class App {
       __eventHandlers: eventHandlers,
     };
     this.vault = {
+      adapter: new FileSystemAdapter(),
       getFileByPath: vi.fn(() => null),
       getFolderByPath: vi.fn(() => null),
     };
@@ -811,6 +814,7 @@ export class MarkdownView {
 export class TAbstractFile {
   path = '';
   name = '';
+  parent: TFolder | null = null;
 }
 export class TFile extends TAbstractFile {
   basename = '';
