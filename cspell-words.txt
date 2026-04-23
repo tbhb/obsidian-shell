@@ -3,6 +3,7 @@ autoupdate
 biomejs
 Cascadia
 collab
+conpty
 Consolas
 cooldown
 dependabot

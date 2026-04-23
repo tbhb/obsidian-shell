@@ -7,6 +7,8 @@ An embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] an
 [node-pty]: https://github.com/microsoft/node-pty
 [scaffold]: https://github.com/tbhb/obsidian-vite-sample-plugin
 
+![A debugging note open next to an embedded shell running the Vitest suite, with the Shells sidebar showing attached and detached sessions.](docs/images/hero.png)
+
 ## Features
 
 - Multi-session shells, one shell per Obsidian leaf. Tab labels number sessions Shell 1, Shell 2, and so on.
@@ -44,10 +46,11 @@ Grab the latest [release][releases] and copy these assets into `.obsidian/plugin
 - `main.js`
 - `manifest.json`
 - `styles.css`
-- `pty-<platform>-<arch>.node` matching your system, such as `pty-darwin-arm64.node` on Apple silicon or `pty-win32-x64.node` on 64-bit Windows
-- `spawn-helper-<platform>-<arch>` matching your system on macOS and Linux. Windows doesn't ship a spawn-helper
+- `pty-<platform>-<arch>.node` matching your system, such as `pty-darwin-arm64.node` on Apple silicon or `pty-linux-x64.node` on 64-bit Linux
+- On macOS only, the matching `spawn-helper-<platform>-<arch>` file. Linux node-pty doesn't build one and Windows doesn't need one
+- On Windows only, `conpty-win32-x64.node` and `conpty_console_list-win32-x64.node` alongside `pty-win32-x64.node`
 
-On macOS and Linux, mark the spawn-helper executable:
+On macOS, mark the spawn-helper executable:
 
 ```bash
 chmod +x .obsidian/plugins/obsidian-shell/spawn-helper-*
