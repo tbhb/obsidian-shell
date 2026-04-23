@@ -57,6 +57,7 @@ toolchain
 tsc
 [Tt]sconfigs?
 [Tt]ypecheck
+unflagged
 Vite
 vite-sample-plugin
 Vitest
