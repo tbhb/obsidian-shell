@@ -61,6 +61,11 @@ exceptions:
   - AGENTS.md
   - README
   - CHANGELOG
+  - TODO
+  - Testing Library
+  - obsidian-shell
+  - versions.json
+  - AID
   - Cloudflare
   - Docker
   - Redis

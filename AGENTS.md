@@ -35,7 +35,7 @@ Run the full gate before pushing:
 pnpm lint:all && pnpm typecheck && pnpm build && pnpm test:coverage
 ```
 
-The pre-commit hook runs `nano-staged`. The pre-push hook runs typecheck, knip, and tests. Never bypass with `--no-verify`.
+The pre-commit hook runs `nano-staged`. The pre-push hook runs the full lint, typecheck, build, and coverage gate. Never bypass with `--no-verify`.
 
 ## Repository layout
 
@@ -137,7 +137,7 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 - husky hooks, installed automatically by `pnpm install`:
   - `pre-commit` runs `nano-staged` across the staged files
   - `commit-msg` runs commitlint
-  - `pre-push` runs `pnpm typecheck && pnpm lint:knip && pnpm test`
+  - `pre-push` runs `pnpm lint:all && pnpm typecheck && pnpm build && pnpm test:coverage`
 - Never use `--no-verify`. Fix the underlying failure.
 - Work on a feature branch, open a PR, and merge via squash.
 

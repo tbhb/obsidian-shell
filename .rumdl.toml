@@ -8,7 +8,6 @@ respect_gitignore = true
 # conventions (`*` list markers, leading blank lines); don't fight it.
 exclude = [
   ".git",
-  ".github",
   ".vale",
   "CHANGELOG.md",
   "coverage",

@@ -48,10 +48,48 @@ export default tseslint.config(
       },
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['eslint.config.mts', 'manifest.json'],
+          allowDefaultProject: [
+            'eslint.config.mts',
+            'vite.config.ts',
+            'vitest.config.ts',
+            'commitlint.config.js',
+            'manifest.json',
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
         extraFileExtensions: ['.json'],
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      sonarjs,
+    },
+    rules: {
+      'sonarjs/cognitive-complexity': ['error', 15],
+      ...typeAwareRules,
+    },
+  },
+  // Root-level config files. These aren't part of tsconfig.json's `include`,
+  // so they fall through `allowDefaultProject` above. They run in Node, not
+  // the browser, and have no reason to use `obsidianmd` rules.
+  {
+    files: ['vite.config.ts', 'vitest.config.ts', 'commitlint.config.js'],
+    languageOptions: {
+      parser: tseslint.parser,
+      globals: {
+        ...globals.node,
+      },
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: [
+            'eslint.config.mts',
+            'vite.config.ts',
+            'vitest.config.ts',
+            'commitlint.config.js',
+            'manifest.json',
+          ],
+        },
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     plugins: {
@@ -97,15 +135,23 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
-  // Scope the Obsidian submission rules to plugin source only; they fire
-  // false positives on test fixtures that intentionally probe forbidden
-  // patterns. The plugin's recommended preset doubles as a plain rules map,
-  // so apply it directly instead of spreading the multi-layer flat-config
-  // array the plugin also exposes.
+  // Apply the Obsidian submission rules to plugin source and tests. The
+  // recommended preset doubles as a plain rules map, so apply it directly
+  // instead of spreading the multi-layer flat-config array the plugin also
+  // exposes.
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts'],
     plugins: { obsidianmd },
     rules: { ...obsidianmd.configs.recommended },
+  },
+  // `hardcoded-config-path` substring-matches `.obsidian` and fires on docs
+  // URLs (`docs.obsidian.md/...`). That's a false positive in tests that
+  // assert against those URLs; the rule stays active on `src/`.
+  {
+    files: ['test/**/*.ts'],
+    rules: {
+      'obsidianmd/hardcoded-config-path': 'off',
+    },
   },
   globalIgnores([
     'node_modules',
@@ -114,10 +160,6 @@ export default tseslint.config(
     'main.js',
     'main.js.map',
     'styles.css',
-    'vite.config.ts',
-    'vitest.config.ts',
-    'commitlint.config.js',
-    'version-bump.mjs',
     'versions.json',
     '.husky',
   ]),
