@@ -45,6 +45,12 @@ coverage
 # jscpd: on-demand report output (written when reporters include html, json, etc.)
 /report/
 
+# stryker: html report and sandbox tmp dir. The incremental report file
+# (reports/stryker-incremental.json) is regenerated per run; CI restores it
+# from cache, locally it's fine to discard.
+/reports/
+/.stryker-tmp/
+
 # scratch dir for local notes, planning, drafts — kept out of cspell/knip/etc.
 /tmp/
 
