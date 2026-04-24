@@ -375,10 +375,28 @@ function isReleasePleaseContext(): boolean {
   });
 }
 
-function checkReleaseManagedFiles(files: readonly string[]): void {
-  const touched = RELEASE_MANAGED_FILES.filter((name) => files.includes(name));
-  if (touched.length === 0) return;
+function manifestVersionChanged(base: string): boolean {
+  try {
+    const before = JSON.parse(runGit(['show', `${base}:manifest.json`])) as { version?: string };
+    const after = JSON.parse(runGit(['show', 'HEAD:manifest.json'])) as { version?: string };
+    return before.version !== after.version;
+  } catch {
+    return false;
+  }
+}
+
+function checkReleaseManagedFiles(base: string, files: readonly string[]): void {
   if (isReleasePleaseContext()) return;
+  // `manifest.json` is partly release-managed: release-please only owns the
+  // `version` field via the extra-files mapping in
+  // .github/release-please-config.json. Edits to `id`, `name`, `description`,
+  // and `minAppVersion` are human-owned, so only fail when `version` changed.
+  const fullyManagedTouched = RELEASE_MANAGED_FILES.filter(
+    (name) => name !== 'manifest.json' && files.includes(name),
+  );
+  const versionTouched = files.includes('manifest.json') && manifestVersionChanged(base);
+  const touched = versionTouched ? [...fullyManagedTouched, 'manifest.json'] : fullyManagedTouched;
+  if (touched.length === 0) return;
   fail(
     `Release-managed files edited outside a release-please PR: ${touched
       .map((name) => `\`${name}\``)
@@ -443,7 +461,7 @@ async function run(): Promise<void> {
   await checkEscapeHatches();
   checkDependencyDelta(base);
   checkBuildOutputLeak(files);
-  checkReleaseManagedFiles(files);
+  checkReleaseManagedFiles(base, files);
   checkMinAppVersion(base, files);
 }
 
