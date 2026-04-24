@@ -114,7 +114,7 @@ pnpm dev
 
 That runs `vite build --watch` on top of Rolldown. Every save under `src/` emits a fresh `main.js` and `styles.css` at the plugin root, and enabling the plugin inside Obsidian picks up the new build after a reload. The [Hot Reload][hot-reload] community plugin handles that reload for you automatically.
 
-Hot Reload cycles the plugin on every `main.js` or `styles.css` write, so `onload` and `onUserEnable` fire each time. `onUserEnable` gates auto-opening a shell behind a `loadData()` null check, so Hot Reload cycles don't spawn new terminals. Delete `data.json` if you want to hit the first-run flow again.
+Hot Reload cycles the plugin on every `main.js` or `styles.css` write, so `onload` and `onUserEnable` fire each time. `onUserEnable` gates auto-opening a shell behind a `loadData()` null check, so Hot Reload cycles don't start new terminals. Delete `data.json` if you want to hit the first-run flow again.
 
 In a second terminal, run tests in watch mode:
 

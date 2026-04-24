@@ -18,7 +18,7 @@ function resolveFontFamily(el: HTMLElement, override: string): string {
   if (override) {
     return override;
   }
-  // xterm's WebGL renderer measures glyphs via canvas, which cannot resolve
+  // xterm's WebGL renderer measures glyphs via canvas, which can't resolve
   // CSS custom properties. Grab the concrete font stack Obsidian uses before
   // handing it to the terminal.
   const monospace = getComputedStyle(el).getPropertyValue('--font-monospace').trim();
@@ -95,7 +95,7 @@ export class ShellView extends ItemView {
   override async setState(state: unknown, result: ViewStateResult): Promise<void> {
     // Only update sessionId when explicitly provided as a string. Obsidian
     // also calls setState during workspace restore, layout operations, and
-    // internal setViewState calls that omit our state keys; clobbering the
+    // internal setViewState calls that omit these state keys. Clobbering the
     // live binding to null in those cases stranded attached views.
     if (state !== null && typeof state === 'object') {
       const next = (state as PersistedState).sessionId;
@@ -105,11 +105,11 @@ export class ShellView extends ItemView {
         this.sessionId = next;
         if (this.terminal !== null) {
           // setState arrived after onOpen. Discard the session bindSession
-          // spawned as a placeholder; it was only ever bound to this view.
+          // spawned as a placeholder, since it only ever bound to this view.
           this.session?.detach();
           this.session = null;
           this.terminal.clear();
-          // biome-ignore lint/nursery/noUnnecessaryConditions: orphan is set true by bindSession before setState fires with a different id
+          // biome-ignore lint/nursery/noUnnecessaryConditions: bindSession sets orphan to true before setState fires with a different id
           if (orphan && previousId !== null && !this.plugin.isSessionAttached(previousId)) {
             this.plugin.killSession(previousId);
           }
@@ -133,7 +133,7 @@ export class ShellView extends ItemView {
     terminal.open(this.contentEl);
 
     // Match VS Code's rendering path. The DOM fallback stays active if WebGL
-    // cannot initialize on this machine (older GPUs, headless environments).
+    // can't initialize on this machine (older GPUs, headless environments).
     let webglAddon: WebglAddon | null = null;
     try {
       webglAddon = new WebglAddon();
@@ -146,10 +146,10 @@ export class ShellView extends ItemView {
     this.reserveStatusBarSpace();
     fitAddon.fit();
 
-    // Obsidian's own onResize hook does not fire for every layout change
-    // (for example, dragging a leaf from the right sidebar into a bottom
-    // split). Observe containerEl (the outer leaf wrapper we never mutate)
-    // so our own height writes on contentEl do not retrigger the observer.
+    // Obsidian's own onResize hook doesn't fire for every layout change
+    // (dragging a leaf from the right sidebar into a bottom split, say).
+    // Observe containerEl (the outer leaf wrapper the view never mutates)
+    // so inline height writes on contentEl don't fire the observer again.
     this.resizeObserver = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         this.reserveStatusBarSpace();
@@ -171,9 +171,9 @@ export class ShellView extends ItemView {
     terminal.onData((data) => this.session?.write(data));
     terminal.onResize(({ cols, rows }) => this.session?.resize(cols, rows));
 
-    // Obsidian does not guarantee setState fires before onOpen on freshly
+    // Obsidian doesn't guarantee setState fires before onOpen on freshly
     // created views. Read the stored state from the leaf directly so
-    // bindSession does not spawn an orphan session that setState would
+    // bindSession doesn't start an orphan session that setState would
     // then have to discard.
     if (this.sessionId === null) {
       const state = this.leaf.getViewState()?.state;
@@ -191,9 +191,9 @@ export class ShellView extends ItemView {
   }
 
   override onClose(): Promise<void> {
-    // The plugin owns the PtySession so it survives the view being torn down
-    // and recreated when the user drags the leaf into a different pane. Only
-    // the xterm instance and the writer binding go away here.
+    // The plugin owns the PtySession so it survives the view tearing down
+    // and recreating when the user drags the leaf into a different pane.
+    // Only the xterm instance and the writer binding go away here.
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     this.contentEl.style.removeProperty('height');
@@ -276,15 +276,15 @@ export class ShellView extends ItemView {
 
   focusTerminal(): void {
     // Unconditional focus for user-initiated paths (open, switch, restart).
-    // Workspace restore still goes through focusTerminalIfActive so we do
-    // not steal focus on startup.
+    // Workspace restore still goes through focusTerminalIfActive so startup
+    // doesn't steal focus.
     requestAnimationFrame(() => this.terminal?.focus());
   }
 
   private focusTerminalIfActive(): void {
     // Only steal focus when this view is already the active one. On startup
-    // Obsidian re-opens every view, and we do not want to yank focus out of
-    // whichever pane the user is working in.
+    // Obsidian re-opens every view, and yanking focus out of the active
+    // pane the user is working in would be disruptive.
     if (this.app.workspace.getActiveViewOfType(ShellView) !== this) {
       return;
     }
@@ -298,7 +298,7 @@ export class ShellView extends ItemView {
     // the overlay. FitAddon's measurement only subtracts padding on the
     // .xterm element, so CSS-only fixes either overshoot or leave a gap.
     // Measure the overlay at runtime and shrink the content element so its
-    // bottom sits at the overlay's top edge; FitAddon then reads an
+    // bottom sits at the overlay's top edge. FitAddon then reads an
     // accurate available height.
     const statusBar = document.querySelector('.status-bar');
     if (!(statusBar instanceof HTMLElement)) {
@@ -320,9 +320,9 @@ export class ShellView extends ItemView {
   }
 
   private refreshTabTitle(): void {
-    // ItemView does not expose a public way to reflect getDisplayText changes,
+    // ItemView doesn't expose a public way to reflect getDisplayText changes,
     // but the tab header exposes the title element on the leaf. Fall back to
-    // requestSaveLayout if the element is not available yet (pre-mount).
+    // requestSaveLayout if the element isn't available yet (pre-mount).
     const header = (this.leaf as { tabHeaderInnerTitleEl?: HTMLElement }).tabHeaderInnerTitleEl;
     if (header) {
       header.setText(this.label);

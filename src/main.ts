@@ -92,9 +92,9 @@ export default class ShellPlugin extends Plugin {
   }
 
   private async maybeAutoOpenFirstShell(): Promise<void> {
-    // Only auto-open on the very first enable. Subsequent enables
+    // Only auto-open on the first enable. Later enables
     // (workspace reload, Hot Reload after a build, toggling the plugin off
-    // and back on) would otherwise spawn a surprise shell every time.
+    // and back on) would otherwise start a surprise shell every time.
     const persisted = await this.loadData();
     if (persisted !== null) {
       return;

@@ -159,7 +159,7 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 ## Obsidian gotchas
 
 - `minAppVersion` stays at 1.7.2 so the plugin can call `onUserEnable` and `onExternalSettingsChange`.
-- `onUserEnable` runs on every Hot Reload cycle and every explicit enable. The plugin gates auto-opening behind a `loadData()` null check and persists default settings on first run so later enables don't spawn surprise shells. Don't reintroduce unconditional view activation from that hook.
+- `onUserEnable` runs on every Hot Reload cycle and every explicit enable. The plugin gates auto-opening behind a `loadData()` null check and persists default settings on first run so later enables don't start surprise shells. Don't reintroduce unconditional view activation from that hook.
 - Register listeners and intervals via `this.registerDomEvent()` and `this.registerInterval()` so they unload with the plugin.
 - Gate desktop-only features behind `Platform.isMobile` checks.
 - Use `createEl`, `createDiv`, and `createSpan` helpers. Never set `innerHTML`.

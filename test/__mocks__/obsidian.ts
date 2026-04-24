@@ -3,19 +3,19 @@
  *
  * The real `obsidian` npm package is a types-only shim with no runtime main,
  * so importing it under Vitest throws. This stub provides just enough of the
- * public API for unit tests to import, instantiate, and drive plugin code —
+ * public API for unit tests to import, instantiate, and drive plugin code,
  * including invoking captured callbacks (commands, ribbon, protocol, DOM
  * events, and settings onChange handlers).
  *
- * Extend this file as you need more of the API surface in your tests.
+ * Extend this file as tests need more of the API surface.
  */
 
 import { vi } from 'vitest';
 
 type AnyFn = (...args: unknown[]) => unknown;
 
-// Loose command shape — real Obsidian typings are richer than our mock's
-// subset, so we accept anything and let plugin code bind more specific types.
+// Loose command shape. Real Obsidian typings are richer than this mock's
+// subset, so this accepts anything and lets plugin code bind specific types.
 interface CapturedCommand {
   id: string;
   name: string;
@@ -45,7 +45,7 @@ interface CapturedBasesView {
 }
 
 // Mirrors the upstream Obsidian types. `| void` is deliberate so
-// fire-and-forget handlers assign without type errors — swapping to
+// fire-and-forget handlers assign without type errors. Swapping to
 // `| undefined` breaks `() => {}` compatibility.
 type MarkdownPostProcessorFn = (
   element: HTMLElement,
@@ -114,7 +114,7 @@ export class Plugin extends Component {
   app: App;
   manifest: PluginManifest;
 
-  // Test introspection — the plugin code registers callbacks here; tests
+  // Test introspection. The plugin code registers callbacks here, and tests
   // invoke them to exercise branches.
   __commands: CapturedCommand[] = [];
   __ribbonIcons: CapturedRibbonIcon[] = [];
@@ -269,7 +269,7 @@ export class App {
         return ref;
       }),
       openLinkText: vi.fn(async (_linktext: string, _sourcePath: string, _newLeaf?: unknown) => {
-        // no-op stub — tests assert against the spy directly
+        // no-op stub, tests assert against the spy directly
       }),
       trigger: vi.fn((_name: string, ..._args: any[]) => undefined),
       __eventHandlers: eventHandlers,
@@ -549,8 +549,8 @@ export class SecretComponent {
 }
 
 // Per-vault runtime store behind app.secretStorage. setSecret enforces the
-// real API's lowercase-alphanumeric-with-dashes constraint so tests catch
-// invalid IDs the way Obsidian would.
+// same lowercase-alphanumeric-with-dashes constraint as the real API, so
+// tests catch invalid IDs the way Obsidian would.
 export class SecretStorage {
   private readonly secrets = new Map<string, string>();
   setSecret(id: string, secret: string): void {
@@ -721,16 +721,16 @@ export class Modal {
   onClose(): void {}
 }
 
-// Shape of a fuzzy match result — tests don't use the match ranges, but
+// Shape of a fuzzy match result. Tests don't use the match ranges, but
 // concrete classes accept a FuzzyMatch<T> so the mock needs the type.
 export interface FuzzyMatch<T> {
   item: T;
   match: { score: number; matches: number[][] };
 }
 
-// SuggestModal's real implementation renders an input + results list via
-// Obsidian's internals. The mock exposes the same abstract surface so
-// concrete subclasses can be instantiated and driven directly from tests.
+// The real SuggestModal renders an input + results list via Obsidian's
+// internals. The mock exposes the same abstract surface so tests can
+// construct concrete subclasses and drive them directly.
 export abstract class SuggestModal<T> extends Modal {
   inputEl: HTMLInputElement;
   resultContainerEl: HTMLElement;
@@ -778,7 +778,7 @@ export abstract class FuzzySuggestModal<T> extends SuggestModal<FuzzyMatch<T>> {
 }
 
 // Obsidian's setIcon stamps an SVG into the element. The mock only needs
-// to mark the element so tests can assert which icon was requested.
+// to mark the element so tests can assert which icon the caller asked for.
 export function setIcon(el: HTMLElement, icon: string): void {
   el.dataset['icon'] = icon;
 }
@@ -950,8 +950,8 @@ export interface MarkdownPostProcessorContext {
 
 export class HoverPopover {}
 
-// Mirror the real Obsidian API surface — Keymap is exported as a class with
-// static helpers, so this stub has to be a class too.
+// Mirror the real Obsidian API surface. Keymap comes from Obsidian as a class
+// with static helpers, so this stub has to be a class too.
 // biome-ignore lint/complexity/noStaticOnlyClass: mirrors upstream API
 export class Keymap {
   static isModEvent = vi.fn((_evt?: unknown) => false as unknown as boolean);

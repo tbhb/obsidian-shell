@@ -47,7 +47,7 @@ Grab the latest [release][releases] and copy these assets into `.obsidian/plugin
 - On macOS only, the matching `spawn-helper-<platform>-<arch>` file. Linux node-pty doesn't build one and Windows doesn't need one
 - On Windows only, `conpty-win32-x64.node` and `conpty_console_list-win32-x64.node` alongside `pty-win32-x64.node`
 
-On macOS, mark the spawn-helper executable:
+On macOS, mark the `spawn-helper` executable:
 
 ```bash
 chmod +x .obsidian/plugins/obsidian-shell/spawn-helper-*

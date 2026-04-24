@@ -37,7 +37,7 @@ Per-platform natives produced by the build matrix:
 - `pty-darwin-arm64.node`, `pty-darwin-x64.node`
 - `pty-linux-x64.node`, `pty-linux-arm64.node`
 - `pty-win32-x64.node` plus the ConPTY peers `conpty-win32-x64.node` and `conpty_console_list-win32-x64.node`
-- `spawn-helper-darwin-arm64` and `spawn-helper-darwin-x64`. Linux node-pty doesn't build a spawn-helper and Windows doesn't need one.
+- `spawn-helper-darwin-arm64` and `spawn-helper-darwin-x64`. Linux node-pty doesn't build a `spawn-helper` and Windows doesn't need one.
 
 ## versions.json sync
 

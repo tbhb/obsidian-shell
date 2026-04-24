@@ -33,34 +33,34 @@ async function stageNativesAndEnable(): Promise<void> {
   await obsidianPage.enablePlugin('obsidian-shell');
 }
 
-// TODO(e2e-pty): Un-skip once node-pty works under wdio-obsidian-service's
-// launch path. The scaffold below is verified working end-to-end except for
-// the PTY spawn itself:
+// TODO(e2e-PTY): Un-skip once node-pty works under wdio-obsidian-service's
+// launch path. The scaffold below works end-to-end except for the PTY
+// `spawn` itself:
 //
 //   - ChromeDriver connects to Obsidian (session established).
 //   - `plugins: [{ path: "..", enabled: false }]` installs the plugin.
-//   - `stageNativesAndEnable()` drops pty-<platform>-<arch>.node and
-//     spawn-helper-<platform>-<arch> into the installed plugin dir with 755
-//     mode, then flips the plugin on.
+//   - `stageNativesAndEnable()` drops `pty-<platform>-<arch>.node` and
+//     `spawn-helper-<platform>-<arch>` into the installed plugin dir with
+//     755 mode, then flips the plugin on.
 //   - `browser.executeObsidianCommand('obsidian-shell:run-self-test')`
 //     dispatches cleanly and the Notice DOM element renders with text.
 //
 // The `nodePty.spawn()` call inside `probePty` fails with the catch-all
-// "posix_spawnp failed." error from node-pty/src/unix/pty.cc. The same
-// binary execs cleanly via child_process.execFileSync from the same
-// renderer, /dev/ptmx opens, /usr/bin/uname exists — so the PTY allocation
-// or spawn step itself is rejected in ChromeDriver's launch context. The
-// same plugin works in a normal double-click launch of the same Obsidian
-// binary (auto-opens a shell tab).
+// `posix_spawnp failed.` error from node-pty's POSIX backend. The same
+// binary execs cleanly via `child_process.execFileSync` from the same
+// renderer, `/dev/ptmx` opens, and `/usr/bin/uname` exists. Something about
+// the PTY allocation or `spawn` step itself fails in ChromeDriver's launch
+// context. The same plugin works in a normal double-click launch of the
+// same Obsidian binary (auto-opens a shell tab).
 //
 // Next moves when picking this back up:
 //   1. File an issue on wdio-obsidian-service documenting the symptom.
 //   2. Build a locally patched node-pty that surfaces the actual errno
-//      from `pty_posix_spawn` so the failing step is known.
-//   3. Potentially override the --test-type=webdriver flag or whatever
-//      ChromeDriver adds that restricts posix_spawn.
+//      from `pty_posix_spawn` so the failing step becomes visible.
+//   3. Potentially override the `--test-type=webdriver` flag or whatever
+//      ChromeDriver adds that restricts `posix_spawn`.
 //
-// Everything else about the harness is production-ready: swap `describe.skip`
+// Every other part of the harness works. Swap `describe.skip`
 // back to `describe` and it should pass once the underlying blocker lifts.
 describe.skip('obsidian-shell plugin loads end-to-end', () => {
   before(async () => {

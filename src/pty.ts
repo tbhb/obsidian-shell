@@ -3,10 +3,10 @@ import * as nodePty from 'node-pty';
 import { __obsidianShellSetNativeDir as setNativePtyDir } from 'node-pty/lib/utils';
 import type { Plugin } from 'obsidian';
 
-// node-pty's wrapper lives in main.js (Vite bundles it). Its module-level code
-// path that resolves the native binary is deferred by the build-time patches
-// in vite.config.ts, so we can hand in the plugin folder at runtime before the
-// first spawn/open call. Everything below routes through initNative(plugin).
+// node-pty's wrapper lives in main.js (Vite bundles it). Build-time patches in
+// `vite.config.ts` defer its module-level code path that resolves the native
+// binary, so the plugin can hand in the folder at runtime before the first
+// `spawn` or open call. Everything below routes through initNative(plugin).
 
 let nativeInitialized = false;
 
@@ -42,7 +42,7 @@ interface PtySessionOptions {
   rows?: number;
 }
 
-// Cap buffered output so a detached session does not grow without bound.
+// Cap buffered output so a detached session doesn't grow without bound.
 // ~200 KB is roughly 2,500 lines of 80-column output, plenty to reorient
 // the user on reattach without leaking memory.
 const MAX_BUFFER_BYTES = 200_000;
@@ -60,8 +60,8 @@ export class PtySession {
     initNative(plugin);
     const shell = options.shell ?? process.env['SHELL'] ?? '/bin/zsh';
     // Spawn as a login shell so /etc/zprofile (or /etc/profile for bash) runs
-    // path_helper on macOS and adds /opt/homebrew/bin, /usr/local/bin, etc.
-    // Obsidian's renderer inherits a minimal PATH; without -l the user's
+    // `path_helper` on macOS and adds /opt/homebrew/bin, /usr/local/bin, etc.
+    // Obsidian's renderer inherits a minimal PATH. Without -l the user's
     // .zshrc fails to locate tools like mise and starship.
     const shellArgs = options.shellArgs ?? ['-l'];
     const cwd = options.cwd ?? getVaultPath(plugin);

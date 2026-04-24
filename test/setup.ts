@@ -14,7 +14,7 @@ type ElOptions = { text?: string; cls?: string | string[]; attr?: Record<string,
 
 function toClassList(cls: string | string[]): string[] {
   // Obsidian accepts either `string` or `string[]` for `cls`. A string may
-  // contain multiple classes separated by whitespace (e.g. "mod-cta tw:mt-2").
+  // contain many classes separated by whitespace (say, "mod-cta tw:mt-2").
   const raw = Array.isArray(cls) ? cls : [cls];
   return raw.flatMap((c) => c.split(/\s+/).filter(Boolean));
 }
