@@ -6,7 +6,6 @@
   "changelog-path": "CHANGELOG.md",
   "packages": {
     ".": {
-      "prerelease": true,
       "extra-files": [
         {
           "type": "json",

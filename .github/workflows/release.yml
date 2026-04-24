@@ -255,3 +255,15 @@ jobs:
           gh release upload "${{ needs.release-please.outputs.tag_name }}" \
             "${assets[@]}" \
             --clobber
+
+      # release-please does not vary the GitHub prerelease flag based on the
+      # semver qualifier — its `prerelease` config is a static always-on
+      # boolean. Detect the qualifier from the tag and flip the flag so
+      # `0.4.0-beta.1` is prerelease, `0.4.0` is not. Stable releases need
+      # no edit since GitHub defaults new releases to prerelease=false.
+      - name: Mark prerelease for tags with a semver qualifier
+        if: contains(needs.release-please.outputs.tag_name, '-')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ needs.release-please.outputs.tag_name }}" --prerelease=true
