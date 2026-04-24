@@ -16,23 +16,7 @@ vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFac
 const mockedProbePty = vi.mocked(probePty);
 const mockedPtySession = vi.mocked(PtySession);
 
-interface FakeSession {
-  isDead: boolean;
-  kill: ReturnType<typeof vi.fn>;
-  resize: ReturnType<typeof vi.fn>;
-  attach: ReturnType<typeof vi.fn>;
-  detach: ReturnType<typeof vi.fn>;
-  write: ReturnType<typeof vi.fn>;
-}
-
-function lastSession(): FakeSession {
-  const { instances } = mockedPtySession.mock;
-  const last = instances.at(-1);
-  if (!last) {
-    throw new Error('no PtySession was constructed');
-  }
-  return last as unknown as FakeSession;
-}
+import type { FakePtySession as FakeSession } from './helpers/mocks';
 
 beforeEach(() => {
   __resetObsidianMocks();
@@ -75,14 +59,14 @@ async function runSelfTest(): Promise<string | undefined> {
 describe('ShellPlugin.loadSettings', () => {
   it('falls back to defaults when loadData returns null', async () => {
     const plugin = makePlugin();
-    plugin.loadData = vi.fn(async () => null);
+    plugin.loadData = vi.fn(() => Promise.resolve(null));
     await plugin.loadSettings();
     expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
   });
 
   it('merges stored partial settings over defaults', async () => {
     const plugin = makePlugin();
-    plugin.loadData = vi.fn(async () => ({}));
+    plugin.loadData = vi.fn(() => Promise.resolve({}));
     await plugin.loadSettings();
     expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
   });
@@ -162,7 +146,9 @@ describe('ShellPlugin.refreshOpenViews', () => {
     const leaf = new WorkspaceLeaf();
     leaf.view = { render: vi.fn() };
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
-    expect(() => plugin.refreshOpenViews()).not.toThrow();
+    expect(() => {
+      plugin.refreshOpenViews();
+    }).not.toThrow();
   });
 });
 
@@ -192,7 +178,8 @@ describe('ShellPlugin.createSession', () => {
     plugin.settings.shell = { path: '', args: [] };
     plugin.createSession(80, 24);
     const [, options] = mockedPtySession.mock.calls[0] ?? [];
-    expect(options).toMatchObject({ shell: undefined, shellArgs: undefined });
+    expect(options).not.toHaveProperty('shell');
+    expect(options).not.toHaveProperty('shellArgs');
   });
 });
 
@@ -345,7 +332,7 @@ describe('ShellPlugin.onSessionsChanged', () => {
     const entry = plugin.createSession(80, 24);
     const exitMock = (entry.session as unknown as { onExit: ReturnType<typeof vi.fn> }).onExit;
     expect(exitMock).toHaveBeenCalled();
-    const [exitCb] = exitMock.mock.calls[0] ?? [];
+    const exitCb = exitMock.mock.calls[0]?.[0] as (() => void) | undefined;
     listener.mockClear();
     exitCb?.();
     expect(listener).toHaveBeenCalled();
@@ -355,7 +342,9 @@ describe('ShellPlugin.onSessionsChanged', () => {
 describe('ShellPlugin.openShellPicker', () => {
   it('opens a ShellPickerModal instance', () => {
     const plugin = makePlugin();
-    expect(() => plugin.openShellPicker()).not.toThrow();
+    expect(() => {
+      plugin.openShellPicker();
+    }).not.toThrow();
   });
 });
 
@@ -439,7 +428,9 @@ describe('ShellPlugin.killSession', () => {
 
   it('is a no-op on unknown ids', () => {
     const plugin = makePlugin();
-    expect(() => plugin.killSession('shell-99')).not.toThrow();
+    expect(() => {
+      plugin.killSession('shell-99');
+    }).not.toThrow();
   });
 });
 
@@ -457,7 +448,9 @@ describe('ShellPlugin.killAllSessions', () => {
 
   it('is a no-op when no sessions exist', () => {
     const plugin = makePlugin();
-    expect(() => plugin.killAllSessions()).not.toThrow();
+    expect(() => {
+      plugin.killAllSessions();
+    }).not.toThrow();
   });
 });
 
@@ -497,7 +490,9 @@ describe('ShellPlugin.killActiveShell', () => {
     const view = new ShellView(leaf as never, plugin as never);
     view.getSessionId = vi.fn().mockReturnValue(null);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
-    expect(() => plugin.killActiveShell()).not.toThrow();
+    expect(() => {
+      plugin.killActiveShell();
+    }).not.toThrow();
   });
 });
 
@@ -531,7 +526,9 @@ describe('ShellPlugin.onunload', () => {
 
   it('is safe when no sessions exist', () => {
     const plugin = makePlugin();
-    expect(() => plugin.onunload()).not.toThrow();
+    expect(() => {
+      plugin.onunload();
+    }).not.toThrow();
   });
 });
 
@@ -578,7 +575,7 @@ describe('ShellPlugin.onload', () => {
 describe('ShellPlugin.onExternalSettingsChange', () => {
   it('reloads settings and refreshes open views', async () => {
     const plugin = makePlugin();
-    plugin.loadData = vi.fn(async () => null);
+    plugin.loadData = vi.fn(() => Promise.resolve(null));
     const refreshSpy = vi.spyOn(plugin, 'refreshOpenViews');
     await plugin.onExternalSettingsChange();
     expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
@@ -621,7 +618,7 @@ describe('ShellPlugin.activateView', () => {
 describe('ShellPlugin.onUserEnable', () => {
   it('activates the view when no plugin data exists yet', async () => {
     const plugin = makePlugin();
-    plugin.loadData = vi.fn(async () => null);
+    plugin.loadData = vi.fn(() => Promise.resolve(null));
     plugin.saveData = vi.fn();
     const spy = vi.spyOn(plugin, 'activateView').mockResolvedValue();
     plugin.onUserEnable();
@@ -633,7 +630,7 @@ describe('ShellPlugin.onUserEnable', () => {
 
   it('skips activation when plugin data is already persisted', async () => {
     const plugin = makePlugin();
-    plugin.loadData = vi.fn(async () => ({}));
+    plugin.loadData = vi.fn(() => Promise.resolve({}));
     const spy = vi.spyOn(plugin, 'activateView').mockResolvedValue();
     plugin.onUserEnable();
     // Give the async handler a turn.
@@ -666,7 +663,7 @@ describe('shell commands wiring', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'killActiveShell').mockReturnValue();
-    plugin.__findCommand('kill')?.callback?.();
+    void plugin.__findCommand('kill')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
@@ -675,7 +672,7 @@ describe('shell commands wiring', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'restartActiveShell').mockReturnValue();
-    plugin.__findCommand('restart')?.callback?.();
+    void plugin.__findCommand('restart')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
@@ -684,7 +681,7 @@ describe('shell commands wiring', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'killAllSessions').mockReturnValue();
-    plugin.__findCommand('kill-all')?.callback?.();
+    void plugin.__findCommand('kill-all')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
@@ -693,7 +690,7 @@ describe('shell commands wiring', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'openShellPicker').mockReturnValue();
-    plugin.__findCommand('switch')?.callback?.();
+    void plugin.__findCommand('switch')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });
@@ -702,7 +699,7 @@ describe('shell commands wiring', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const spy = vi.spyOn(plugin, 'activateShellsView').mockResolvedValue();
-    plugin.__findCommand('open-sidebar')?.callback?.();
+    void plugin.__findCommand('open-sidebar')?.callback?.();
     expect(spy).toHaveBeenCalled();
     plugin.onunload();
   });

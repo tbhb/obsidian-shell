@@ -48,8 +48,8 @@ describe('ShellsView.render', () => {
     const rows = view.contentEl.querySelectorAll('.obsidian-shell-list-row');
     expect(rows).toHaveLength(2);
     expect(rows[0]?.querySelector('.obsidian-shell-list-label')?.textContent).toBe('Shell 1');
-    expect((rows[0] as HTMLElement | undefined)?.dataset.state).toBe('detached');
-    expect((rows[1] as HTMLElement | undefined)?.dataset.state).toBe('exited');
+    expect((rows[0] as HTMLElement | undefined)?.dataset['state']).toBe('detached');
+    expect((rows[1] as HTMLElement | undefined)?.dataset['state']).toBe('exited');
   });
 
   function setupSingleRow() {

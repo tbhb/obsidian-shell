@@ -1,4 +1,4 @@
-import { type FileSystemAdapter, Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
+import { Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
 import { ShellPickerModal } from './picker';
 import { PtySession, probePty } from './pty';
 import {
@@ -51,22 +51,30 @@ export default class ShellPlugin extends Plugin {
     this.addCommand({
       id: 'kill',
       name: 'Kill',
-      callback: () => this.killActiveShell(),
+      callback: () => {
+        this.killActiveShell();
+      },
     });
     this.addCommand({
       id: 'restart',
       name: 'Restart',
-      callback: () => this.restartActiveShell(),
+      callback: () => {
+        this.restartActiveShell();
+      },
     });
     this.addCommand({
       id: 'kill-all',
       name: 'Kill all',
-      callback: () => this.killAllSessions(),
+      callback: () => {
+        this.killAllSessions();
+      },
     });
     this.addCommand({
       id: 'switch',
       name: 'Switch',
-      callback: () => this.openShellPicker(),
+      callback: () => {
+        this.openShellPicker();
+      },
     });
     this.addCommand({
       id: 'run-self-test',
@@ -87,7 +95,7 @@ export default class ShellPlugin extends Plugin {
     // Only auto-open on the very first enable. Subsequent enables
     // (workspace reload, Hot Reload after a build, toggling the plugin off
     // and back on) would otherwise spawn a surprise shell every time.
-    const persisted = (await this.loadData()) as unknown;
+    const persisted = await this.loadData();
     if (persisted !== null) {
       return;
     }
@@ -154,7 +162,7 @@ export default class ShellPlugin extends Plugin {
       return;
     }
     const id = view.getSessionId();
-    if (!id) {
+    if (id === null || id === '') {
       return;
     }
     this.killSession(id);
@@ -171,7 +179,7 @@ export default class ShellPlugin extends Plugin {
 
   resolveCwd(): string {
     const { strategy, fixedPath } = this.settings.cwd;
-    const adapter = this.app.vault.adapter as FileSystemAdapter;
+    const adapter = this.app.vault['adapter'];
     if (strategy === 'fixed-path' && fixedPath) {
       return fixedPath;
     }
@@ -189,14 +197,23 @@ export default class ShellPlugin extends Plugin {
     const id = `shell-${number}`;
     const label = `Shell ${number}`;
     const { shell } = this.settings;
-    const session = new PtySession(this, {
+    const options: {
+      cwd: string;
+      cols: number;
+      rows: number;
+      shell?: string;
+      shellArgs?: string[];
+    } = {
       cwd: this.resolveCwd(),
-      shell: shell.path || undefined,
-      shellArgs: shell.args.length > 0 ? shell.args : undefined,
       cols,
       rows,
+    };
+    if (shell.path) options.shell = shell.path;
+    if (shell.args.length > 0) options.shellArgs = shell.args;
+    const session = new PtySession(this, options);
+    session.onExit(() => {
+      this.notifySessionsChanged();
     });
-    session.onExit(() => this.notifySessionsChanged());
     const entry: SessionEntry = { id, label, session };
     this.sessions.set(id, entry);
     this.notifySessionsChanged();

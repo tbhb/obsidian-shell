@@ -19,10 +19,10 @@ type AnyFn = (...args: unknown[]) => unknown;
 interface CapturedCommand {
   id: string;
   name: string;
-  callback?: (...args: any[]) => any;
-  editorCallback?: (...args: any[]) => any;
-  editorCheckCallback?: (...args: any[]) => any;
-  checkCallback?: (...args: any[]) => any;
+  callback?: (...args: any[]) => unknown | Promise<unknown>;
+  editorCallback?: (...args: any[]) => unknown | Promise<unknown>;
+  editorCheckCallback?: (...args: any[]) => unknown | Promise<unknown>;
+  checkCallback?: (...args: any[]) => unknown | Promise<unknown>;
 }
 
 interface CapturedRibbonIcon {
@@ -47,13 +47,11 @@ interface CapturedBasesView {
 // Mirrors the upstream Obsidian types. `| void` is deliberate so
 // fire-and-forget handlers assign without type errors — swapping to
 // `| undefined` breaks `() => {}` compatibility.
-// biome-ignore lint/suspicious/noConfusingVoidType: mirrors obsidian API
 type MarkdownPostProcessorFn = (
   element: HTMLElement,
   ctx: MarkdownPostProcessorContext,
 ) => Promise<unknown> | void;
 
-// biome-ignore lint/suspicious/noConfusingVoidType: mirrors obsidian API
 type MarkdownCodeBlockProcessorFn = (
   source: string,
   el: HTMLElement,
@@ -144,8 +142,8 @@ export class Plugin extends Component {
     this.manifest = manifest;
   }
 
-  loadData = vi.fn(async () => null as unknown);
-  saveData = vi.fn(async (_data: unknown) => undefined);
+  loadData = vi.fn((): Promise<unknown> => Promise.resolve(null as unknown));
+  saveData = vi.fn((_data: unknown): Promise<void> => Promise.resolve());
 
   addRibbonIcon = vi.fn((icon: string, title: string, callback: (evt: MouseEvent) => unknown) => {
     this.__ribbonIcons.push({ icon, title, callback });
@@ -182,11 +180,11 @@ export class Plugin extends Component {
     },
   );
 
-  registerDomEvent = vi.fn((target: EventTarget, event: string, callback: AnyFn) => {
+  override registerDomEvent = vi.fn((target: EventTarget, event: string, callback: AnyFn) => {
     this.__domEvents.push({ target, event, callback: callback as (evt: Event) => unknown });
   });
 
-  registerInterval = vi.fn((handle: number) => {
+  override registerInterval = vi.fn((handle: number) => {
     this.__intervals.push(handle);
     return handle;
   });
@@ -232,7 +230,7 @@ export class App {
     getRightLeaf: (split: boolean) => WorkspaceLeaf | null;
     getLeftLeaf: (split: boolean) => WorkspaceLeaf | null;
     getLeaf: (mode?: boolean | 'split' | 'tab' | 'window') => WorkspaceLeaf;
-    revealLeaf: (leaf: WorkspaceLeaf) => unknown;
+    revealLeaf: (leaf: WorkspaceLeaf) => Promise<void>;
     detachLeavesOfType: (type: string) => void;
     getActiveViewOfType: (type: unknown) => unknown;
     getActiveFile: () => TFile | null;
@@ -242,7 +240,11 @@ export class App {
     trigger: (name: string, ...args: any[]) => void;
     __eventHandlers: CapturedWorkspaceEvent[];
   };
-  vault: Record<string, unknown>;
+  vault: {
+    adapter: FileSystemAdapter;
+    getFileByPath: (path: string) => TFile | null;
+    getFolderByPath: (path: string) => TFolder | null;
+  };
   metadataCache: Record<string, unknown>;
   fileManager: Record<string, unknown>;
   secretStorage: SecretStorage | undefined;
@@ -256,7 +258,7 @@ export class App {
       getRightLeaf: vi.fn((_split: boolean) => null),
       getLeftLeaf: vi.fn((_split: boolean) => null),
       getLeaf: vi.fn((_mode?: boolean | 'split' | 'tab' | 'window') => new WorkspaceLeaf()),
-      revealLeaf: vi.fn(),
+      revealLeaf: vi.fn((_leaf: WorkspaceLeaf) => Promise.resolve()),
       detachLeavesOfType: vi.fn((_type: string) => undefined),
       getActiveViewOfType: vi.fn(() => null),
       getActiveFile: vi.fn(() => null as TFile | null),
@@ -778,7 +780,7 @@ export abstract class FuzzySuggestModal<T> extends SuggestModal<FuzzyMatch<T>> {
 // Obsidian's setIcon stamps an SVG into the element. The mock only needs
 // to mark the element so tests can assert which icon was requested.
 export function setIcon(el: HTMLElement, icon: string): void {
-  el.dataset.icon = icon;
+  el.dataset['icon'] = icon;
 }
 
 // Obsidian's renderResults highlights matched ranges in `text`. The mock
@@ -905,7 +907,7 @@ export interface Editor {
 
 export class WorkspaceLeaf {
   view: unknown = null;
-  setViewState = vi.fn(async (_state: unknown) => undefined);
+  setViewState = vi.fn((_state: unknown): Promise<void> => Promise.resolve());
   getViewState = vi.fn(() => ({ type: '', state: {} as unknown }));
 }
 

@@ -1,7 +1,7 @@
 import process from 'node:process';
 import * as nodePty from 'node-pty';
 import { __obsidianShellSetNativeDir as setNativePtyDir } from 'node-pty/lib/utils';
-import type { FileSystemAdapter, Plugin } from 'obsidian';
+import type { Plugin } from 'obsidian';
 
 // node-pty's wrapper lives in main.js (Vite bundles it). Its module-level code
 // path that resolves the native binary is deferred by the build-time patches
@@ -17,7 +17,7 @@ function initNative(plugin: Plugin): void {
 }
 
 function getPluginDir(plugin: Plugin): string {
-  const adapter = plugin.app.vault.adapter as FileSystemAdapter;
+  const adapter = plugin.app.vault['adapter'];
   if (typeof adapter.getFullPath !== 'function') {
     throw new Error('obsidian-shell requires a filesystem vault');
   }
@@ -26,7 +26,7 @@ function getPluginDir(plugin: Plugin): string {
 }
 
 function getVaultPath(plugin: Plugin): string {
-  const adapter = plugin.app.vault.adapter as FileSystemAdapter;
+  const adapter = plugin.app.vault['adapter'];
   if (typeof adapter.getBasePath !== 'function') {
     throw new Error('obsidian-shell requires a filesystem vault');
   }
@@ -58,7 +58,7 @@ export class PtySession {
 
   constructor(plugin: Plugin, options: PtySessionOptions = {}) {
     initNative(plugin);
-    const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
+    const shell = options.shell ?? process.env['SHELL'] ?? '/bin/zsh';
     // Spawn as a login shell so /etc/zprofile (or /etc/profile for bash) runs
     // path_helper on macOS and adds /opt/homebrew/bin, /usr/local/bin, etc.
     // Obsidian's renderer inherits a minimal PATH; without -l the user's
@@ -72,7 +72,9 @@ export class PtySession {
       cwd,
       env: options.env ?? (process.env as { [key: string]: string }),
     });
-    this.proc.onData((data) => this.route(data));
+    this.proc.onData((data) => {
+      this.route(data);
+    });
     this.proc.onExit(() => {
       this.dead = true;
       this.route('\r\n[process exited]\r\n');

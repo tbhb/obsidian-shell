@@ -60,7 +60,7 @@ describe('mergeSettings', () => {
   });
 
   it('does not mutate DEFAULT_SETTINGS', () => {
-    const before = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    const before: unknown = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     mergeSettings({ appearance: { fontSize: 20 } });
     expect(DEFAULT_SETTINGS).toEqual(before);
   });

@@ -1,8 +1,18 @@
 import { vi } from 'vitest';
 
+export interface FakePtySession {
+  isDead: boolean;
+  kill: ReturnType<typeof vi.fn>;
+  resize: ReturnType<typeof vi.fn>;
+  attach: ReturnType<typeof vi.fn>;
+  detach: ReturnType<typeof vi.fn>;
+  write: ReturnType<typeof vi.fn>;
+  onExit: ReturnType<typeof vi.fn>;
+}
+
 export function ptyMockFactory(options: { killMarksDead?: boolean } = {}) {
   const { killMarksDead = false } = options;
-  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
+  const ctor = vi.fn(function ctorImpl(this: FakePtySession) {
     this.isDead = false;
     this.kill = killMarksDead
       ? vi.fn(() => {

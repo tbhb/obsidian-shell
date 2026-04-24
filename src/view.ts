@@ -1,6 +1,6 @@
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { type ITheme, Terminal } from '@xterm/xterm';
+import { type ITerminalOptions, type ITheme, Terminal } from '@xterm/xterm';
 import { ItemView, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
 import type ShellPlugin from './main';
 import type { PtySession } from './pty';
@@ -25,31 +25,34 @@ function resolveFontFamily(el: HTMLElement, override: string): string {
   return monospace || 'monospace';
 }
 
-function buildTerminalOptions(el: HTMLElement, settings: ShellPluginSettings) {
+function buildTerminalOptions(el: HTMLElement, settings: ShellPluginSettings): ITerminalOptions {
   const { appearance, behavior } = settings;
-  return {
+  const options: ITerminalOptions = {
     fontFamily: resolveFontFamily(el, appearance.fontFamily),
     fontSize: appearance.fontSize,
     lineHeight: appearance.lineHeight,
     cursorStyle: appearance.cursorStyle,
     cursorBlink: appearance.cursorBlink,
     scrollback: behavior.scrollback,
-    theme: appearance.followObsidianTheme ? resolveObsidianTheme(el) : undefined,
   };
+  if (appearance.followObsidianTheme) {
+    options.theme = resolveObsidianTheme(el);
+  }
+  return options;
 }
 
 function resolveObsidianTheme(el: HTMLElement): ITheme {
   const cs = getComputedStyle(el);
+  const theme: ITheme = {};
   const background = cs.getPropertyValue('--background-primary').trim();
+  if (background) theme.background = background;
   const foreground = cs.getPropertyValue('--text-normal').trim();
+  if (foreground) theme.foreground = foreground;
   const cursor = cs.getPropertyValue('--text-accent').trim();
+  if (cursor) theme.cursor = cursor;
   const selectionBackground = cs.getPropertyValue('--text-highlight-bg').trim();
-  return {
-    background: background || undefined,
-    foreground: foreground || undefined,
-    cursor: cursor || undefined,
-    selectionBackground: selectionBackground || undefined,
-  };
+  if (selectionBackground) theme.selectionBackground = selectionBackground;
+  return theme;
 }
 
 export class ShellView extends ItemView {
@@ -68,15 +71,15 @@ export class ShellView extends ItemView {
     this.plugin = plugin;
   }
 
-  getViewType(): string {
+  override getViewType(): string {
     return SHELL_VIEW_TYPE;
   }
 
-  getDisplayText(): string {
+  override getDisplayText(): string {
     return this.label;
   }
 
-  getIcon(): string {
+  override getIcon(): string {
     return 'terminal';
   }
 
@@ -84,29 +87,30 @@ export class ShellView extends ItemView {
     return this.sessionId;
   }
 
-  getState(): Record<string, unknown> {
+  override getState(): Record<string, unknown> {
     const base = super.getState();
     return { ...base, sessionId: this.sessionId };
   }
 
-  async setState(state: unknown, result: ViewStateResult): Promise<void> {
+  override async setState(state: unknown, result: ViewStateResult): Promise<void> {
     // Only update sessionId when explicitly provided as a string. Obsidian
     // also calls setState during workspace restore, layout operations, and
     // internal setViewState calls that omit our state keys; clobbering the
     // live binding to null in those cases stranded attached views.
-    if (state && typeof state === 'object') {
+    if (state !== null && typeof state === 'object') {
       const next = (state as PersistedState).sessionId;
       if (typeof next === 'string' && next !== this.sessionId) {
         const previousId = this.sessionId;
         const orphan = this.sessionCreatedByThisView;
         this.sessionId = next;
-        if (this.terminal) {
+        if (this.terminal !== null) {
           // setState arrived after onOpen. Discard the session bindSession
           // spawned as a placeholder; it was only ever bound to this view.
           this.session?.detach();
           this.session = null;
           this.terminal.clear();
-          if (orphan && previousId && !this.plugin.isSessionAttached(previousId)) {
+          // biome-ignore lint/nursery/noUnnecessaryConditions: orphan is set true by bindSession before setState fires with a different id
+          if (orphan && previousId !== null && !this.plugin.isSessionAttached(previousId)) {
             this.plugin.killSession(previousId);
           }
           this.bindSession();
@@ -116,7 +120,7 @@ export class ShellView extends ItemView {
     return super.setState(state, result);
   }
 
-  async onOpen(): Promise<void> {
+  override onOpen(): Promise<void> {
     this.contentEl.empty();
     this.contentEl.addClass('obsidian-shell-host');
 
@@ -171,9 +175,9 @@ export class ShellView extends ItemView {
     // created views. Read the stored state from the leaf directly so
     // bindSession does not spawn an orphan session that setState would
     // then have to discard.
-    if (!this.sessionId) {
+    if (this.sessionId === null) {
       const state = this.leaf.getViewState()?.state;
-      if (state && typeof state === 'object') {
+      if (state !== undefined && typeof state === 'object') {
         const id = (state as PersistedState).sessionId;
         if (typeof id === 'string') {
           this.sessionId = id;
@@ -183,9 +187,10 @@ export class ShellView extends ItemView {
 
     this.bindSession();
     this.focusTerminalIfActive();
+    return Promise.resolve();
   }
 
-  async onClose(): Promise<void> {
+  override onClose(): Promise<void> {
     // The plugin owns the PtySession so it survives the view being torn down
     // and recreated when the user drags the leaf into a different pane. Only
     // the xterm instance and the writer binding go away here.
@@ -200,14 +205,15 @@ export class ShellView extends ItemView {
     this.terminal = null;
     this.fitAddon = null;
     this.plugin.notifySessionsChanged();
+    return Promise.resolve();
   }
 
   reattachSession(): void {
-    if (!this.terminal) {
+    if (this.terminal === null) {
       return;
     }
     this.session?.detach();
-    if (this.sessionId) {
+    if (this.sessionId !== null) {
       this.plugin.killSession(this.sessionId);
     }
     this.sessionId = null;
@@ -254,10 +260,10 @@ export class ShellView extends ItemView {
   }
 
   private bindSession(): void {
-    if (!this.terminal) {
+    if (this.terminal === null) {
       return;
     }
-    const existing = this.sessionId ? this.plugin.getSession(this.sessionId) : null;
+    const existing = this.sessionId !== null ? this.plugin.getSession(this.sessionId) : null;
     const entry = existing ?? this.plugin.createSession(this.terminal.cols, this.terminal.rows);
     this.sessionCreatedByThisView = existing === null;
     this.sessionId = entry.id;

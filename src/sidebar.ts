@@ -19,27 +19,31 @@ export class ShellsView extends ItemView {
     this.plugin = plugin;
   }
 
-  getViewType(): string {
+  override getViewType(): string {
     return SHELLS_VIEW_TYPE;
   }
 
-  getDisplayText(): string {
+  override getDisplayText(): string {
     return 'Shells';
   }
 
-  getIcon(): string {
+  override getIcon(): string {
     return 'terminal-square';
   }
 
-  async onOpen(): Promise<void> {
+  override onOpen(): Promise<void> {
     this.contentEl.addClass('obsidian-shell-list-panel');
     this.render();
-    this.unsubscribe = this.plugin.onSessionsChanged(() => this.render());
+    this.unsubscribe = this.plugin.onSessionsChanged(() => {
+      this.render();
+    });
+    return Promise.resolve();
   }
 
-  async onClose(): Promise<void> {
+  override onClose(): Promise<void> {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    return Promise.resolve();
   }
 
   render(): void {
@@ -61,7 +65,7 @@ export class ShellsView extends ItemView {
   private renderRow(parent: HTMLElement, entry: SessionEntry): void {
     const state = this.plugin.describeSessionState(entry);
     const row = parent.createDiv({ cls: 'obsidian-shell-list-row' });
-    row.dataset.state = state;
+    row.dataset['state'] = state;
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
 
