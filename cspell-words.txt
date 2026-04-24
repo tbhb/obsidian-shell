@@ -9,6 +9,7 @@ conpty
 Consolas
 cooldown
 Cowork
+dangerfile
 depcruise
 dependabot
 EPERM
@@ -27,6 +28,7 @@ linktext
 Menlo
 MSVC
 nanostaged
+numstat
 obsidianmd
 oneline
 parentheticals
