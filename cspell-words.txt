@@ -19,6 +19,7 @@ Iosevka
 jsdom
 Kahneman
 Keymap
+knip
 lezer
 linktext
 Menlo

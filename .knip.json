@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.ts", "test/**/*.ts"],
+  "ignoreBinaries": ["actionlint", "rumdl", "vale", "yamllint"],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "@testing-library/dom",
+    "@testing-library/user-event",
+    "@types/mocha",
+    "@wdio/globals",
+    "@wdio/local-runner",
+    "@wdio/mocha-framework",
+    "electron",
+    "mocha",
+    "wdio-obsidian-reporter",
+    "wdio-obsidian-service"
+  ]
+}

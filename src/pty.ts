@@ -33,7 +33,7 @@ function getVaultPath(plugin: Plugin): string {
   return adapter.getBasePath();
 }
 
-export interface PtySessionOptions {
+interface PtySessionOptions {
   shell?: string;
   shellArgs?: string[];
   cwd?: string;
@@ -47,7 +47,7 @@ export interface PtySessionOptions {
 // the user on reattach without leaking memory.
 const MAX_BUFFER_BYTES = 200_000;
 
-export type PtyDataWriter = (data: string) => void;
+type PtyDataWriter = (data: string) => void;
 
 export class PtySession {
   private proc: nodePty.IPty;
