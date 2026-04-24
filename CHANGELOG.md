@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.0.0-beta.2](https://github.com/tbhb/obsidian-shell/compare/0.1.1-beta.2...1.0.0-beta.2) (2026-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Anyone running this locally must rename their .obsidian/plugins/obsidian-shell/ folder to .obsidian/plugins/shell/ before reloading the plugin.
+
+### Features
+
+* add Danger.js for diff-shape and PR-metadata gates ([#11](https://github.com/tbhb/obsidian-shell/issues/11)) ([4d9c12b](https://github.com/tbhb/obsidian-shell/commit/4d9c12b321aefdfdbd7f108b8c0d96c381b42c10))
+* add integration test tier with filesystem-backed vault fixture ([#12](https://github.com/tbhb/obsidian-shell/issues/12)) ([444c96e](https://github.com/tbhb/obsidian-shell/commit/444c96eaa41a132c52ae25bd73f6745fcbfe1d1a))
+* add property testing tier with fast-check ([#15](https://github.com/tbhb/obsidian-shell/issues/15)) ([16c57cb](https://github.com/tbhb/obsidian-shell/commit/16c57cbd5997dafb4f134c1cec93ad92eeee1be5))
+* add Stryker mutation testing at 100% break threshold ([#17](https://github.com/tbhb/obsidian-shell/issues/17)) ([ee94095](https://github.com/tbhb/obsidian-shell/commit/ee940958d557352c6bc41ec899137f6eeff0af7b))
+
+
+### Bug Fixes
+
+* **ci:** auto-detect GitHub prerelease flag from semver qualifier ([#16](https://github.com/tbhb/obsidian-shell/issues/16)) ([0025a7c](https://github.com/tbhb/obsidian-shell/commit/0025a7ced9d93ab41d4ebf24a93f558b4c824348))
+* **ci:** scope manifest.json release-managed check to the version field ([#14](https://github.com/tbhb/obsidian-shell/issues/14)) ([989f8ce](https://github.com/tbhb/obsidian-shell/commit/989f8ce6cc76a1d8679b40e27583e7f3f71a6e9e))
+
+
+### Miscellaneous Chores
+
+* rename plugin id to shell ([#18](https://github.com/tbhb/obsidian-shell/issues/18)) ([d80a2f1](https://github.com/tbhb/obsidian-shell/commit/d80a2f16d28c3bc771772dcd8e4056ed9ea9f7c2))
+
 ## [0.1.1-beta.2](https://github.com/tbhb/obsidian-shell/compare/0.1.1-beta.1...0.1.1-beta.2) (2026-04-23)
 
 
