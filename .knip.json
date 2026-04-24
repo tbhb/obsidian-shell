@@ -3,6 +3,7 @@
   "project": ["src/**/*.ts", "test/**/*.ts"],
   "ignoreBinaries": ["actionlint", "rumdl", "vale", "yamllint"],
   "ignoreDependencies": [
+    "fast-check",
     "tailwindcss",
     "@testing-library/dom",
     "@testing-library/user-event",
