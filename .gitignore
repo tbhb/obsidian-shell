@@ -42,6 +42,9 @@ coverage
 # jscpd: on-demand report output (written when reporters include html, json, etc.)
 /report/
 
+# scratch dir for local notes, planning, drafts — kept out of cspell/knip/etc.
+/tmp/
+
 # logs
 *.log
 .pnpm-debug.log*
