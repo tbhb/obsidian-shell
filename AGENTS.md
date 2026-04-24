@@ -87,6 +87,7 @@ pnpm vale:sync        # download vale style packages
 
 - Two-space indentation for everything, enforced by Biome. Single quotes, semicolons, trailing commas, 100-char line width. See `biome.json`.
 - `eslint-plugin-obsidianmd` handles Obsidian submission rules: sentence-case UI strings, no `innerHTML`, no `TFile` casts, no `mod-cta` misuse, and no plugin name inside a command label. ESLint runs only on `src/**/*.ts`.
+- `eslint-plugin-sonarjs` contributes `sonarjs/cognitive-complexity` at the default threshold of 15. Prefer extracting helper functions over raising the threshold.
 - Strict TypeScript with ES2022 target, `noUncheckedIndexedAccess`, and `isolatedModules`. Two tsconfigs: `tsconfig.json` keeps real `obsidian` types for `src/`, while `tsconfig.test.json` aliases `obsidian` to the mock for tests.
 - Avoid default exports except the plugin entry at `src/main.ts`.
 - Use CSS classes, never inline styles. Tailwind utilities require the `tw:` prefix per v4 variant syntax. Hand-written classes live under `@layer components` in `src/styles.css`.

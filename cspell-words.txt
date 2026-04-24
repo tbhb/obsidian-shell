@@ -35,6 +35,7 @@ reviewdog
 rumdl
 shellcheck
 sigstore
+sonarjs
 Sönke
 SLSA
 spawnp

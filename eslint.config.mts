@@ -1,13 +1,17 @@
 /*
- * ESLint exists in this scaffold ONLY to run `eslint-plugin-obsidianmd`, which
- * enforces Obsidian community-plugin submission rules (sentence case, no
- * innerHTML, no TFile casts, settings-tab headings, command naming, etc.).
+ * ESLint runs two plugins in this scaffold:
+ *   - `eslint-plugin-obsidianmd` enforces Obsidian community-plugin submission
+ *     rules (sentence case, no innerHTML, no TFile casts, settings-tab
+ *     headings, command naming, etc.).
+ *   - `eslint-plugin-sonarjs` contributes `sonarjs/cognitive-complexity` so
+ *     functions that grow hard to reason about fail lint instead of review.
  *
  * All general-purpose lint + formatting is handled by Biome — see `biome.json`.
  */
 
 import { globalIgnores } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
+import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -25,6 +29,10 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
         extraFileExtensions: ['.json'],
       },
+    },
+    plugins: { sonarjs },
+    rules: {
+      'sonarjs/cognitive-complexity': ['error', 15],
     },
   },
   ...obsidianmd.configs.recommended,
