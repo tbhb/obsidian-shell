@@ -1,0 +1,14 @@
+{
+  "shell": {
+    "args": ["-l", "-i"]
+  },
+  "cwd": {
+    "strategy": "vault-root"
+  },
+  "appearance": {
+    "fontSize": 16
+  },
+  "behavior": {
+    "scrollback": 5000
+  }
+}

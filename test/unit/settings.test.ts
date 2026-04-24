@@ -9,17 +9,17 @@ import {
   type ToggleComponent,
 } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type ShellPlugin from '../src/main';
+import type ShellPlugin from '../../src/main';
 import {
   DEFAULT_SETTINGS,
   detectMonospaceFonts,
   mergeSettings,
   ShellSettingTab,
-} from '../src/settings';
-import { makePlugin } from './helpers/plugin';
+} from '../../src/settings';
+import { makePlugin } from '../helpers/plugin';
 
-vi.mock('../src/pty', async () => (await import('./helpers/mocks')).ptyMockFactory());
-vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
+vi.mock('../../src/pty', async () => (await import('../helpers/mocks')).ptyMockFactory());
+vi.mock('../../src/view', async () => (await import('../helpers/mocks')).viewMockFactory());
 // jscpd:ignore-end
 
 describe('mergeSettings', () => {

@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-shell",
+  "name": "Shell",
+  "version": "0.1.1-beta.2",
+  "minAppVersion": "1.7.2",
+  "description": "Embedded xterm.js terminal backed by node-pty.",
+  "author": "tbhb",
+  "authorUrl": "https://github.com/tbhb",
+  "isDesktopOnly": true
+}

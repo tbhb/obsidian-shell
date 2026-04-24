@@ -1,11 +1,11 @@
 // jscpd:ignore-start
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type ShellPlugin from '../src/main';
-import { ShellPickerModal } from '../src/picker';
-import { makeSessionEntry as makeEntry, makePlugin } from './helpers/plugin';
+import type ShellPlugin from '../../src/main';
+import { ShellPickerModal } from '../../src/picker';
+import { makeSessionEntry as makeEntry, makePlugin } from '../helpers/plugin';
 
-vi.mock('../src/pty', async () => (await import('./helpers/mocks')).ptyMockFactory());
-vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
+vi.mock('../../src/pty', async () => (await import('../helpers/mocks')).ptyMockFactory());
+vi.mock('../../src/view', async () => (await import('../helpers/mocks')).viewMockFactory());
 // jscpd:ignore-end
 
 describe('ShellPickerModal', () => {
