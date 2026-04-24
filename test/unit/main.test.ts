@@ -1,8 +1,10 @@
 import { __getNotices, __resetObsidianMocks, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type ShellPlugin from '../../src/main';
+import * as pickerModule from '../../src/picker';
 import { PtySession, probePty } from '../../src/pty';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { SHELLS_VIEW_TYPE, ShellsView } from '../../src/sidebar';
 import { SHELL_VIEW_TYPE, ShellView } from '../../src/view';
 import { makePlugin } from '../helpers/plugin';
 
@@ -70,6 +72,20 @@ describe('ShellPlugin.loadSettings', () => {
     await plugin.loadSettings();
     expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
   });
+
+  it('applies non-default stored values through mergeSettings', async () => {
+    const plugin = makePlugin();
+    plugin.loadData = vi.fn(() =>
+      Promise.resolve({
+        shell: { path: '/bin/bash' },
+        appearance: { fontSize: 18 },
+      }),
+    );
+    await plugin.loadSettings();
+    expect(plugin.settings.shell.path).toBe('/bin/bash');
+    expect(plugin.settings.appearance.fontSize).toBe(18);
+    expect(plugin.settings.cwd).toEqual(DEFAULT_SETTINGS.cwd);
+  });
 });
 
 describe('ShellPlugin.saveSettings', () => {
@@ -102,14 +118,31 @@ describe('ShellPlugin.resolveCwd', () => {
     expect(plugin.resolveCwd()).toBe('/mock/vault');
   });
 
-  it("returns the active note's folder for note-dir", () => {
+  it('ignores fixedPath when strategy is vault-root', () => {
     const plugin = makePlugin();
-    plugin.settings.cwd.strategy = 'note-dir';
+    plugin.settings.cwd = { strategy: 'vault-root', fixedPath: '/Users/elsewhere' };
+    expect(plugin.resolveCwd()).toBe('/mock/vault');
+  });
+
+  function stubActiveFileInFolder(plugin: ShellPlugin, folderPath: string): void {
     const folder = new TFolder();
-    folder.path = 'notes';
+    folder.path = folderPath;
     const file = new TFile();
     file.parent = folder;
     vi.spyOn(plugin.app.workspace, 'getActiveFile').mockReturnValue(file);
+  }
+
+  it('ignores the active file when strategy is not note-dir', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd = { strategy: 'vault-root', fixedPath: '' };
+    stubActiveFileInFolder(plugin, 'notes');
+    expect(plugin.resolveCwd()).toBe('/mock/vault');
+  });
+
+  it("returns the active note's folder for note-dir", () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd.strategy = 'note-dir';
+    stubActiveFileInFolder(plugin, 'notes');
     expect(plugin.resolveCwd()).toBe('/mock/vault/notes');
   });
 
@@ -171,6 +204,14 @@ describe('ShellPlugin.createSession', () => {
     plugin.createSession(80, 24);
     const [, options] = mockedPtySession.mock.calls[0] ?? [];
     expect(options).toMatchObject({ shell: '/bin/bash', shellArgs: ['-i'] });
+  });
+
+  it('forwards cwd, cols, and rows to the PtySession options', () => {
+    const plugin = makePlugin();
+    plugin.settings.shell = { path: '', args: [] };
+    plugin.createSession(120, 40);
+    const [, options] = mockedPtySession.mock.calls[0] ?? [];
+    expect(options).toEqual({ cwd: '/mock/vault', cols: 120, rows: 40 });
   });
 
   it('omits shell overrides when the settings are empty', () => {
@@ -276,8 +317,9 @@ describe('ShellPlugin.activateShellsView', () => {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
-    vi.spyOn(plugin.app.workspace, 'getLeftLeaf').mockReturnValue(leaf);
+    const getLeftLeaf = vi.spyOn(plugin.app.workspace, 'getLeftLeaf').mockReturnValue(leaf);
     await plugin.activateShellsView();
+    expect(getLeftLeaf).toHaveBeenCalledWith(false);
     expect(leaf.setViewState).toHaveBeenCalledWith({
       type: 'obsidian-shell-list',
       active: true,
@@ -340,11 +382,18 @@ describe('ShellPlugin.onSessionsChanged', () => {
 });
 
 describe('ShellPlugin.openShellPicker', () => {
-  it('opens a ShellPickerModal instance', () => {
+  it('constructs and opens a ShellPickerModal', () => {
     const plugin = makePlugin();
-    expect(() => {
-      plugin.openShellPicker();
-    }).not.toThrow();
+    const openSpy = vi.fn();
+    const ctorSpy = vi.spyOn(pickerModule, 'ShellPickerModal').mockImplementation(function (this: {
+      open: () => void;
+    }) {
+      this.open = openSpy;
+    } as never);
+    plugin.openShellPicker();
+    expect(ctorSpy).toHaveBeenCalledWith(plugin.app, plugin);
+    expect(openSpy).toHaveBeenCalled();
+    ctorSpy.mockRestore();
   });
 });
 
@@ -484,15 +533,23 @@ describe('ShellPlugin.killActiveShell', () => {
     expect(__getNotices().at(-1)?.message).toBe('No active shell to kill.');
   });
 
-  it('does nothing when the active view has no session id', () => {
+  function expectKillSkippedForSessionId(sessionId: string | null): void {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
     const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue(null);
+    view.getSessionId = vi.fn().mockReturnValue(sessionId);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
-    expect(() => {
-      plugin.killActiveShell();
-    }).not.toThrow();
+    const killSpy = vi.spyOn(plugin, 'killSession');
+    plugin.killActiveShell();
+    expect(killSpy).not.toHaveBeenCalled();
+  }
+
+  it('does nothing when the active view has no session id', () => {
+    expectKillSkippedForSessionId(null);
+  });
+
+  it('treats an empty-string session id the same as null', () => {
+    expectKillSkippedForSessionId('');
   });
 });
 
@@ -538,16 +595,17 @@ describe('ShellPlugin.onload', () => {
     await plugin.onload();
     expect(plugin.__settingTabs).toHaveLength(1);
     expect(plugin.__viewFactories.has(SHELL_VIEW_TYPE)).toBe(true);
-    expect(plugin.__viewFactories.has('obsidian-shell-list')).toBe(true);
-    expect(plugin.__ribbonIcons.map((r) => r.icon)).toContain('terminal-square');
-    expect(plugin.__findCommand('open')).toBeDefined();
-    expect(plugin.__findCommand('new')).toBeDefined();
-    expect(plugin.__findCommand('kill')).toBeDefined();
-    expect(plugin.__findCommand('restart')).toBeDefined();
-    expect(plugin.__findCommand('kill-all')).toBeDefined();
-    expect(plugin.__findCommand('switch')).toBeDefined();
-    expect(plugin.__findCommand('open-sidebar')).toBeDefined();
-    expect(plugin.__findCommand('run-self-test')).toBeDefined();
+    expect(plugin.__viewFactories.has(SHELLS_VIEW_TYPE)).toBe(true);
+    const ribbon = plugin.__ribbonIcons.find((r) => r.icon === 'terminal-square');
+    expect(ribbon?.title).toBe('Shells');
+    expect(plugin.__findCommand('open')?.name).toBe('Open');
+    expect(plugin.__findCommand('open-sidebar')?.name).toBe('Open sidebar');
+    expect(plugin.__findCommand('new')?.name).toBe('New');
+    expect(plugin.__findCommand('kill')?.name).toBe('Kill');
+    expect(plugin.__findCommand('restart')?.name).toBe('Restart');
+    expect(plugin.__findCommand('kill-all')?.name).toBe('Kill all');
+    expect(plugin.__findCommand('switch')?.name).toBe('Switch');
+    expect(plugin.__findCommand('run-self-test')?.name).toBe('Run self-test');
     plugin.onunload();
   });
 
@@ -555,19 +613,17 @@ describe('ShellPlugin.onload', () => {
     const plugin = makePlugin();
     await plugin.onload();
     const factory = plugin.__viewFactories.get(SHELL_VIEW_TYPE);
-    expect(factory).toBeDefined();
     const leaf = new WorkspaceLeaf();
-    expect(() => factory?.(leaf)).not.toThrow();
+    expect(factory?.(leaf)).toBeInstanceOf(ShellView);
     plugin.onunload();
   });
 
   it('constructs a ShellsView through the registered factory', async () => {
     const plugin = makePlugin();
     await plugin.onload();
-    const factory = plugin.__viewFactories.get('obsidian-shell-list');
-    expect(factory).toBeDefined();
+    const factory = plugin.__viewFactories.get(SHELLS_VIEW_TYPE);
     const leaf = new WorkspaceLeaf();
-    expect(() => factory?.(leaf)).not.toThrow();
+    expect(factory?.(leaf)).toBeInstanceOf(ShellsView);
     plugin.onunload();
   });
 });
@@ -595,9 +651,10 @@ describe('ShellPlugin.activateView', () => {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
     vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([]);
-    vi.spyOn(plugin.app.workspace, 'getRightLeaf').mockReturnValue(leaf);
+    const getRightLeaf = vi.spyOn(plugin.app.workspace, 'getRightLeaf').mockReturnValue(leaf);
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.activateView();
+    expect(getRightLeaf).toHaveBeenCalledWith(false);
     expect(leaf.setViewState).toHaveBeenCalledWith({
       type: SHELL_VIEW_TYPE,
       active: true,

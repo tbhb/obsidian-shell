@@ -17,6 +17,10 @@ describe('ShellPickerModal', () => {
     modal = new ShellPickerModal(plugin.app, plugin);
   });
 
+  it('sets the switch-to-shell placeholder on construction', () => {
+    expect(modal.inputEl.placeholder).toBe('Switch to shell...');
+  });
+
   it('lists every session the plugin knows about', () => {
     const entries = [makeEntry('Shell 1'), makeEntry('Shell 2')];
     vi.spyOn(plugin, 'listSessions').mockReturnValue(entries);

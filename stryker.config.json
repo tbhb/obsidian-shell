@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "pnpm",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.stryker.config.ts"
+  },
+  "mutate": ["src/**/*.ts", "!src/pty.ts", "!src/view.ts"],
+  "reporters": ["html", "clear-text", "progress"],
+  "incremental": true,
+  "thresholds": {
+    "high": 100,
+    "low": 90,
+    "break": 100
+  }
+}

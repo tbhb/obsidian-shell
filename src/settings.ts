@@ -120,6 +120,9 @@ export class ShellSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    // Mutation testing disabled for UI copy in this block. See AGENTS.md,
+    // "Mutation testing" section, for the policy.
+    // Stryker disable StringLiteral,ObjectLiteral,Regex
     new Setting(containerEl).setName('Executable').setHeading();
 
     new Setting(containerEl)
@@ -315,5 +318,6 @@ export class ShellSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }),
       );
+    // Stryker restore StringLiteral,ObjectLiteral,Regex
   }
 }
