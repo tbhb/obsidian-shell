@@ -36,6 +36,9 @@ coverage
 /e2e/.wdio-logs
 /e2e/.tmp
 
+# dependency-cruiser: on-demand mermaid graph output
+/dependency-graph.mmd
+
 # logs
 *.log
 .pnpm-debug.log*

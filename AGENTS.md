@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. The plugin embeds a terminal inside [Obsidian][obsidian] via [xterm.js][xtermjs] and [node-pty][node-pty], and builds with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [Biome 2][biome], [TypeScript][typescript], and [pnpm][pnpm].
+Guidance for AI coding agents working in this repository. The plugin embeds a terminal inside [Obsidian][obsidian] via [xterm.js][xtermjs] and [node-pty][node-pty], and builds with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [Biome 2][biome], [dependency-cruiser][depcruise], [TypeScript][typescript], and [pnpm][pnpm].
 
 [obsidian]: https://obsidian.md/
 [xtermjs]: https://xtermjs.org/
@@ -11,6 +11,7 @@ Guidance for AI coding agents working in this repository. The plugin embeds a te
 [vitest]: https://vitest.dev/
 [testing-library]: https://testing-library.com/
 [biome]: https://biomejs.dev/
+[depcruise]: https://github.com/sverweij/dependency-cruiser
 [typescript]: https://www.typescriptlang.org/
 [pnpm]: https://pnpm.io/
 
@@ -59,7 +60,7 @@ manifest.json               # Obsidian plugin manifest
 versions.json               # plugin version -> minAppVersion map
 ```
 
-Config lives at the repo root: `biome.json`, `eslint.config.mts`, `cspell.json` + `cspell-words.txt`, `.rumdl.toml`, `.vale.ini` + `.vale/`, `.yamllint.yaml` + `.yamllintignore`, `commitlint.config.js`, `vite.config.ts`, `vitest.config.ts`, and both `tsconfig.json` plus `tsconfig.test.json`.
+Config lives at the repo root: `biome.json`, `eslint.config.mts`, `.dependency-cruiser.cjs`, `cspell.json` + `cspell-words.txt`, `.rumdl.toml`, `.vale.ini` + `.vale/`, `.yamllint.yaml` + `.yamllintignore`, `commitlint.config.js`, `vite.config.ts`, `vitest.config.ts`, and both `tsconfig.json` plus `tsconfig.test.json`.
 
 ## Commands reference
 
@@ -74,12 +75,14 @@ pnpm typecheck        # tsc on src and test tsconfigs
 pnpm format           # biome format --write
 pnpm format:markdown  # rumdl fmt .
 pnpm lint             # biome lint + eslint
+pnpm lint:deps        # dependency-cruiser on src + test
 pnpm lint:markdown    # rumdl check
 pnpm lint:prose       # vale
 pnpm lint:spelling    # cspell
 pnpm lint:yaml        # yamllint --strict
 pnpm lint:actions     # actionlint
 pnpm lint:all         # every lint above, one command
+pnpm depcruise:graph  # mermaid module graph -> dependency-graph.mmd
 pnpm vale:sync        # download vale style packages
 ```
 
@@ -88,6 +91,7 @@ pnpm vale:sync        # download vale style packages
 - Two-space indentation for everything, enforced by Biome. Single quotes, semicolons, trailing commas, 100-char line width. See `biome.json`.
 - `eslint-plugin-obsidianmd` handles Obsidian submission rules: sentence-case UI strings, no `innerHTML`, no `TFile` casts, no `mod-cta` misuse, and no plugin name inside a command label. ESLint runs only on `src/**/*.ts`.
 - `eslint-plugin-sonarjs` contributes `sonarjs/cognitive-complexity` at the default threshold of 15. Prefer extracting helper functions over raising the threshold.
+- [dependency-cruiser][depcruise] guards the module graph via `.dependency-cruiser.cjs`. It forbids runtime circular dependencies, orphan modules, unresolvable imports, dev-dependency imports from `src/`, duplicate dependency-type declarations, and `src/` depending on `test/`. Cycles composed only of `import type` edges pass, since those edges vanish after tsc emits. The rule exempts `obsidian` and `tslib` from the dev-dep check: the Obsidian host supplies `obsidian` at runtime, and the TypeScript compiler injects `tslib` helpers.
 - Strict TypeScript with ES2022 target, `noUncheckedIndexedAccess`, and `isolatedModules`. Two tsconfigs: `tsconfig.json` keeps real `obsidian` types for `src/`, while `tsconfig.test.json` aliases `obsidian` to the mock for tests.
 - Avoid default exports except the plugin entry at `src/main.ts`.
 - Use CSS classes, never inline styles. Tailwind utilities require the `tw:` prefix per v4 variant syntax. Hand-written classes live under `@layer components` in `src/styles.css`.

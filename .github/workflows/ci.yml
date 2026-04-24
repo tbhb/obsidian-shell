@@ -50,6 +50,9 @@ jobs:
       - name: Lint code (biome + eslint)
         run: pnpm run lint
 
+      - name: Lint dependency graph (dependency-cruiser)
+        run: pnpm run lint:deps
+
       - name: Check spelling (cspell)
         run: pnpm run lint:spelling
 

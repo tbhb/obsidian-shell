@@ -1,4 +1,5 @@
 Ahrens
+archi
 autoupdate
 biomejs
 Cascadia
@@ -7,6 +8,7 @@ conpty
 Consolas
 cooldown
 Cowork
+depcruise
 dependabot
 EPERM
 Fira
