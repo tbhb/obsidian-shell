@@ -3,10 +3,28 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    globals: true,
-    environment: 'jsdom',
-    include: ['test/**/*.test.ts'],
-    setupFiles: ['test/setup.ts'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          globals: true,
+          environment: 'jsdom',
+          include: ['test/unit/**/*.test.ts'],
+          setupFiles: ['test/unit/setup.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integration',
+          globals: true,
+          environment: 'jsdom',
+          include: ['test/integration/**/*.test.ts'],
+          setupFiles: ['test/integration/setup.ts'],
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html', 'json'],

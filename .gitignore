@@ -26,6 +26,9 @@ node_modules
 
 # obsidian runtime data
 data.json
+# keep the fixture data.json under test/fixtures/ so integration tests can
+# round-trip through a real `.obsidian/plugins/<id>/data.json` on disk.
+!test/fixtures/**/data.json
 
 # native-rebuild cache (HOME redirect from sandboxed builds)
 .native-cache

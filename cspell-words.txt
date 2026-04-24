@@ -48,6 +48,7 @@ SLSA
 spawnp
 tailwindcss
 tbhb
+tmpdir
 tfthacker
 tsbuildinfo
 unsub

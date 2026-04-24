@@ -10,6 +10,10 @@
  * Extend this file as tests need more of the API surface.
  */
 
+import { readFileSync, statSync } from 'node:fs';
+import { access, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+
 import { vi } from 'vitest';
 
 type AnyFn = (...args: unknown[]) => unknown;
@@ -142,8 +146,30 @@ export class Plugin extends Component {
     this.manifest = manifest;
   }
 
-  loadData = vi.fn((): Promise<unknown> => Promise.resolve(null as unknown));
-  saveData = vi.fn((_data: unknown): Promise<void> => Promise.resolve());
+  // When the vault's `adapter` exposes the async `DataAdapter` surface (as
+  // `FilesystemDataAdapter` does under integration tests), load/save route
+  // through `.obsidian/plugins/{manifest.id}/data.json` on disk so integration
+  // tests can round-trip settings. Unit tests keep the stock `FileSystemAdapter`
+  // (sync-only), so the feature-detect falls back to the prior null/no-op
+  // behavior, preserving existing unit-test behavior.
+  loadData = vi.fn(async (): Promise<unknown> => {
+    const adapter = this.app.vault.adapter as Partial<DataAdapter>;
+    if (typeof adapter.read !== 'function' || typeof adapter.exists !== 'function') {
+      return null as unknown;
+    }
+    const id = this.manifest.id;
+    const path = `.obsidian/plugins/${id}/data.json`;
+    if (!(await adapter.exists(path))) return null as unknown;
+    return JSON.parse(await adapter.read(path)) as unknown;
+  });
+  saveData = vi.fn(async (data: unknown): Promise<void> => {
+    const adapter = this.app.vault.adapter as Partial<DataAdapter>;
+    if (typeof adapter.write !== 'function' || typeof adapter.mkdir !== 'function') return;
+    const id = this.manifest.id;
+    const dir = `.obsidian/plugins/${id}`;
+    await adapter.mkdir(dir);
+    await adapter.write(`${dir}/data.json`, JSON.stringify(data, null, 2));
+  });
 
   addRibbonIcon = vi.fn((icon: string, title: string, callback: (evt: MouseEvent) => unknown) => {
     this.__ribbonIcons.push({ icon, title, callback });
@@ -221,6 +247,122 @@ export class FileSystemAdapter {
   getBasePath(): string {
     return '/mock/vault';
   }
+}
+
+// Subset of Obsidian's `DataAdapter` interface. The real surface is larger,
+// but these are the methods `Plugin.loadData`/`saveData` need.
+export interface DataAdapter {
+  read(path: string): Promise<string>;
+  write(path: string, data: string): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  remove(path: string): Promise<void>;
+  mkdir(path: string): Promise<void>;
+}
+
+// Filesystem-backed adapter for integration tests. Implements both the
+// sync `FileSystemAdapter` surface used by plugin code (`getBasePath`,
+// `getFullPath`) and the async `DataAdapter` surface used by
+// `Plugin.loadData`/`saveData`. Constructed against a tmpdir that holds a
+// copy of `test/fixtures/vault`.
+export class FilesystemDataAdapter implements DataAdapter {
+  constructor(private readonly rootPath: string) {}
+
+  getBasePath(): string {
+    return this.rootPath;
+  }
+
+  getFullPath(relativePath: string): string {
+    return join(this.rootPath, relativePath);
+  }
+
+  async read(path: string): Promise<string> {
+    return await readFile(join(this.rootPath, path), 'utf8');
+  }
+
+  async write(path: string, data: string): Promise<void> {
+    const absolute = join(this.rootPath, path);
+    await mkdir(dirname(absolute), { recursive: true });
+    await writeFile(absolute, data, 'utf8');
+  }
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      await access(join(this.rootPath, path));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async remove(path: string): Promise<void> {
+    await unlink(join(this.rootPath, path));
+  }
+
+  async mkdir(path: string): Promise<void> {
+    await mkdir(join(this.rootPath, path), { recursive: true });
+  }
+}
+
+// Factory for integration tests. Returns a `vault` object matching the
+// inline shape used by `App.vault` where lookups and reads hit a real
+// directory on disk, so plugin code can drive against a vault fixture
+// copied to a tmpdir.
+export function createFilesystemVault(rootPath: string): {
+  adapter: FilesystemDataAdapter;
+  getFileByPath: (path: string) => TFile | null;
+  getFolderByPath: (path: string) => TFolder | null;
+  read: (file: TFile) => Promise<string>;
+} {
+  const statAt = (relPath: string) => {
+    try {
+      return statSync(join(rootPath, relPath));
+    } catch {
+      return null;
+    }
+  };
+
+  return {
+    adapter: new FilesystemDataAdapter(rootPath),
+    getFileByPath: vi.fn((path: string) => {
+      const stats = statAt(path);
+      return stats?.isFile() === true ? makeTFile(path) : null;
+    }),
+    getFolderByPath: vi.fn((path: string) => {
+      const stats = statAt(path);
+      return stats?.isDirectory() === true ? makeTFolder(path) : null;
+    }),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    read: vi.fn(async (file: TFile) => readFileSync(join(rootPath, file.path), 'utf8')),
+  };
+}
+
+function makeTFile(path: string): TFile {
+  const file = new TFile();
+  file.path = path;
+  const lastSlash = path.lastIndexOf('/');
+  const name = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+  file.name = name;
+  const dot = name.lastIndexOf('.');
+  if (dot > 0) {
+    file.basename = name.slice(0, dot);
+    file.extension = name.slice(dot + 1);
+  } else {
+    file.basename = name;
+    file.extension = '';
+  }
+  const parentPath = lastSlash > 0 ? path.slice(0, lastSlash) : '';
+  if (parentPath !== '') {
+    file.parent = makeTFolder(parentPath);
+  }
+  return file;
+}
+
+function makeTFolder(path: string): TFolder {
+  const folder = new TFolder();
+  folder.path = path;
+  const lastSlash = path.lastIndexOf('/');
+  folder.name = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+  return folder;
 }
 
 export class App {

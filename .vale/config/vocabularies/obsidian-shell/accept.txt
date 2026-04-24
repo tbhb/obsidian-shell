@@ -55,6 +55,7 @@ jsdom
 Keymap
 [Kk]nip
 Lezer
+lookups
 LTS
 MIT
 monospace
@@ -108,6 +109,7 @@ subcommand
 substring
 subtree
 Tailwind
+tmpdir
 toolchain
 tsc
 [Tt]sconfigs?

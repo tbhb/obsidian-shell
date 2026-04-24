@@ -1,22 +1,22 @@
 import { __getNotices, __resetObsidianMocks, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type ShellPlugin from '../src/main';
-import { PtySession, probePty } from '../src/pty';
-import { DEFAULT_SETTINGS } from '../src/settings';
-import { SHELL_VIEW_TYPE, ShellView } from '../src/view';
-import { makePlugin } from './helpers/plugin';
+import type ShellPlugin from '../../src/main';
+import { PtySession, probePty } from '../../src/pty';
+import { DEFAULT_SETTINGS } from '../../src/settings';
+import { SHELL_VIEW_TYPE, ShellView } from '../../src/view';
+import { makePlugin } from '../helpers/plugin';
 
-vi.mock('../src/pty', async () =>
-  (await import('./helpers/mocks')).ptyMockFactory({ killMarksDead: true }),
+vi.mock('../../src/pty', async () =>
+  (await import('../helpers/mocks')).ptyMockFactory({ killMarksDead: true }),
 );
 // The real src/view.ts pulls in @xterm/xterm, which touches the DOM at
 // construction time. Tests only need the module symbols, so mock them.
-vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
+vi.mock('../../src/view', async () => (await import('../helpers/mocks')).viewMockFactory());
 
 const mockedProbePty = vi.mocked(probePty);
 const mockedPtySession = vi.mocked(PtySession);
 
-import type { FakePtySession as FakeSession } from './helpers/mocks';
+import type { FakePtySession as FakeSession } from '../helpers/mocks';
 
 beforeEach(() => {
   __resetObsidianMocks();
