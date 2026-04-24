@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. The plugin embeds a terminal inside [Obsidian][obsidian] via [xterm.js][xtermjs] and [node-pty][node-pty], and builds with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [fast-check][fast-check], [Biome 2][biome], [dependency-cruiser][depcruise], [jscpd][jscpd], [Knip 6][knip], [TypeScript][typescript], and [pnpm][pnpm].
+Guidance for AI coding agents working in this repository. The plugin embeds a terminal inside [Obsidian][obsidian] via [xterm.js][xtermjs] and [node-pty][node-pty], and builds with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [fast-check][fast-check], [Stryker 9][stryker], [Biome 2][biome], [dependency-cruiser][depcruise], [jscpd][jscpd], [Knip 6][knip], [TypeScript][typescript], and [pnpm][pnpm].
 
 [obsidian]: https://obsidian.md/
 [xtermjs]: https://xtermjs.org/
@@ -11,6 +11,7 @@ Guidance for AI coding agents working in this repository. The plugin embeds a te
 [vitest]: https://vitest.dev/
 [testing-library]: https://testing-library.com/
 [fast-check]: https://fast-check.dev/
+[stryker]: https://stryker-mutator.io/
 [biome]: https://biomejs.dev/
 [depcruise]: https://github.com/sverweij/dependency-cruiser
 [jscpd]: https://github.com/kucherenko/jscpd
@@ -59,15 +60,18 @@ test/
 └── property/               # fast-check property tests over pure logic
 .github/
 ├── workflows/ci.yml        # Lint, Build, Test, Documentation jobs
+├── workflows/mutation.yml  # Stryker mutation tests with incremental cache
 ├── workflows/release.yml   # release-please + build + attest + upload
 ├── release-please-config.json
 ├── release-please-manifest.json
 └── dependabot.yml
+scripts/
+└── stryker-changed.mjs     # diff-scoped mutation run for local and agent use
 manifest.json               # Obsidian plugin manifest
 versions.json               # plugin version -> minAppVersion map
 ```
 
-Config lives at the repo root: `biome.json`, `eslint.config.mts`, `.dependency-cruiser.cjs`, `.jscpd.json`, `.knip.json`, `.cspell.json` + `cspell-words.txt`, `.rumdl.toml`, `.vale.ini` + `.vale/`, `.yamllint.yaml` + `.yamllintignore`, `.commitlintrc.ts`, `vite.config.ts`, `vitest.config.ts`, and `tsconfig.json`.
+Config lives at the repo root: `biome.json`, `eslint.config.mts`, `.dependency-cruiser.cjs`, `.jscpd.json`, `.knip.json`, `.cspell.json` + `cspell-words.txt`, `.rumdl.toml`, `.vale.ini` + `.vale/`, `.yamllint.yaml` + `.yamllintignore`, `.commitlintrc.ts`, `stryker.config.json`, `vite.config.ts`, `vitest.config.ts`, `vitest.stryker.config.ts`, and `tsconfig.json`.
 
 ## Commands reference
 
@@ -81,6 +85,8 @@ pnpm test:unit        # vitest run --project=unit
 pnpm test:integration # vitest run --project=integration
 pnpm test:property    # vitest run --project=property
 pnpm test:coverage    # vitest run --project=unit --coverage, enforces 100% thresholds
+pnpm test:mutation    # stryker run, full mutation pass with incremental reuse
+pnpm test:mutation:changed # stryker scoped to src diff vs STRYKER_BASE (default origin/main)
 pnpm typecheck        # tsc --noEmit on the single root tsconfig
 pnpm format           # biome format --write
 pnpm format:markdown  # rumdl fmt .
@@ -129,6 +135,19 @@ pnpm vale:sync        # download vale style packages
 - Property tests use [fast-check][fast-check] via [`@fast-check/vitest`][fast-check-vitest], which exposes `test.prop` and `it.prop` helpers. The default seed policy stays in place. fast-check prints the seed on failure, so reproducing a counterexample takes a single rerun with the printed seed. Save new property suites under `test/property/` rather than the unit tier so coverage metrics stay tied to deterministic unit cases.
 
 [fast-check-vitest]: https://github.com/dubzzz/fast-check/tree/main/packages/vitest
+
+## Mutation testing
+
+[Stryker 9][stryker] gates every mutation-scoped module in `src/` at 100% mutation score. Coverage alone only proves a line ran. Mutation testing proves a test would fail if that line changed. Treat mutation survivors the way you'd treat coverage gaps. Fix the tests, or restructure the source so the survivors move into a pure function whose output a test can pin by equality.
+
+- The Vitest runner reads `vitest.stryker.config.ts`, which narrows execution to the unit project. Integration fixtures and property iterations stay out of mutation runs.
+- Scope: `mutate: ['src/**/*.ts', '!src/pty.ts', '!src/view.ts']`. The two excluded modules match the unit coverage config, since xterm.js and node-pty need a real canvas or native binary and run through Obsidian end-to-end. Every other file in `src/` ships at 100%.
+- The break threshold sits at 100 for every source file. Don't lower it without a concrete reason and a follow-up task to restore it.
+- Stryker directive comments suppress mutant classes that don't belong under mutation testing. `src/settings.ts` `display()` wraps its Setting rows in a block-scoped `// Stryker disable StringLiteral,ObjectLiteral,Regex` comment. Every behavior-bearing literal inside the block has an assertion elsewhere, covering the dropdown option keys, the custom-font sentinel, the fixed-path strategy guard, and the whitespace split pattern. If a new row adds a call whose string literal carries behavior, precede that line with `// Stryker restore next-line StringLiteral` so Stryker re-instruments it, and add a dedicated unit assertion for the literal.
+- Module-level `export const X = 'literal'` mutations can survive a static-import `expect(X).toBe('literal')` assertion when the Vitest worker caches the module before Stryker sets the active mutant. Test them through a runtime path that re-reads the binding. A registry lookup keyed on a literal works. A method call that returns the constant works. Or force re-evaluation with `vi.resetModules()` plus `await import(...)`.
+- `pnpm test:mutation` runs the full pass. `reports/stryker-incremental.json` lets repeated runs reuse prior results, so later invocations finish in seconds.
+- `pnpm test:mutation:changed` scopes `--mutate` to `src/*.ts` changed against `origin/main`. Override the base with `STRYKER_BASE=origin/beta pnpm test:mutation:changed`. Use this during feature work for fast feedback on the files you just edited.
+- Pre-push doesn't run mutation testing. The `mutation.yml` CI workflow enforces the break threshold on every pull request and every `main` push. It caches the incremental report per ref with a fallback to `main`, so PRs branching from a cached main finish inside 30 seconds.
 
 ## Documentation linting
 

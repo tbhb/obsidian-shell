@@ -45,6 +45,8 @@ sigstore
 sonarjs
 Sönke
 SLSA
+stryker
+Stryker
 spawnp
 tailwindcss
 tbhb

@@ -124,25 +124,25 @@ describe('ShellPlugin.resolveCwd', () => {
     expect(plugin.resolveCwd()).toBe('/mock/vault');
   });
 
-  it('ignores the active file when strategy is not note-dir', () => {
-    const plugin = makePlugin();
-    plugin.settings.cwd = { strategy: 'vault-root', fixedPath: '' };
+  function stubActiveFileInFolder(plugin: ShellPlugin, folderPath: string): void {
     const folder = new TFolder();
-    folder.path = 'notes';
+    folder.path = folderPath;
     const file = new TFile();
     file.parent = folder;
     vi.spyOn(plugin.app.workspace, 'getActiveFile').mockReturnValue(file);
+  }
+
+  it('ignores the active file when strategy is not note-dir', () => {
+    const plugin = makePlugin();
+    plugin.settings.cwd = { strategy: 'vault-root', fixedPath: '' };
+    stubActiveFileInFolder(plugin, 'notes');
     expect(plugin.resolveCwd()).toBe('/mock/vault');
   });
 
   it("returns the active note's folder for note-dir", () => {
     const plugin = makePlugin();
     plugin.settings.cwd.strategy = 'note-dir';
-    const folder = new TFolder();
-    folder.path = 'notes';
-    const file = new TFile();
-    file.parent = folder;
-    vi.spyOn(plugin.app.workspace, 'getActiveFile').mockReturnValue(file);
+    stubActiveFileInFolder(plugin, 'notes');
     expect(plugin.resolveCwd()).toBe('/mock/vault/notes');
   });
 
@@ -533,26 +533,23 @@ describe('ShellPlugin.killActiveShell', () => {
     expect(__getNotices().at(-1)?.message).toBe('No active shell to kill.');
   });
 
-  it('does nothing when the active view has no session id', () => {
+  function expectKillSkippedForSessionId(sessionId: string | null): void {
     const plugin = makePlugin();
     const leaf = new WorkspaceLeaf();
     const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue(null);
+    view.getSessionId = vi.fn().mockReturnValue(sessionId);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
     const killSpy = vi.spyOn(plugin, 'killSession');
     plugin.killActiveShell();
     expect(killSpy).not.toHaveBeenCalled();
+  }
+
+  it('does nothing when the active view has no session id', () => {
+    expectKillSkippedForSessionId(null);
   });
 
   it('treats an empty-string session id the same as null', () => {
-    const plugin = makePlugin();
-    const leaf = new WorkspaceLeaf();
-    const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue('');
-    vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
-    const killSpy = vi.spyOn(plugin, 'killSession');
-    plugin.killActiveShell();
-    expect(killSpy).not.toHaveBeenCalled();
+    expectKillSkippedForSessionId('');
   });
 });
 
