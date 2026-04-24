@@ -1,44 +1,17 @@
-import { __getNotices, __resetObsidianMocks, App, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { __getNotices, __resetObsidianMocks, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ShellPlugin from '../src/main';
+import type ShellPlugin from '../src/main';
 import { PtySession, probePty } from '../src/pty';
 import { DEFAULT_SETTINGS } from '../src/settings';
 import { SHELL_VIEW_TYPE, ShellView } from '../src/view';
+import { makePlugin } from './helpers/plugin';
 
-vi.mock('../src/pty', () => {
-  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
-    this.isDead = false;
-    this.kill = vi.fn(() => {
-      this.isDead = true;
-    });
-    this.resize = vi.fn();
-    this.attach = vi.fn();
-    this.detach = vi.fn();
-    this.write = vi.fn();
-    this.onExit = vi.fn();
-  });
-  return {
-    probePty: vi.fn(),
-    PtySession: ctor,
-  };
-});
-
+vi.mock('../src/pty', async () =>
+  (await import('./helpers/mocks')).ptyMockFactory({ killMarksDead: true }),
+);
 // The real src/view.ts pulls in @xterm/xterm, which touches the DOM at
 // construction time. Tests only need the module symbols; mock them.
-vi.mock('../src/view', () => ({
-  SHELL_VIEW_TYPE: 'obsidian-shell',
-  ShellView: class {
-    constructor(
-      public leaf: unknown,
-      public plugin: unknown,
-    ) {}
-    applySettings = vi.fn();
-    reattachSession = vi.fn();
-    attachToSession = vi.fn();
-    focusTerminal = vi.fn();
-    getSessionId = vi.fn(() => null as string | null);
-  },
-}));
+vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
 
 const mockedProbePty = vi.mocked(probePty);
 const mockedPtySession = vi.mocked(PtySession);
@@ -61,17 +34,43 @@ function lastSession(): FakeSession {
   return last as unknown as FakeSession;
 }
 
-function makePlugin(): ShellPlugin {
-  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
-  plugin.settings = structuredClone(DEFAULT_SETTINGS);
-  return plugin;
-}
-
 beforeEach(() => {
   __resetObsidianMocks();
   mockedProbePty.mockReset();
   mockedPtySession.mockClear();
 });
+
+function makeShellViewLeaf(
+  plugin: ShellPlugin,
+  sessionId: string | null,
+): { leaf: WorkspaceLeaf; view: ShellView } {
+  const leaf = new WorkspaceLeaf();
+  const view = new ShellView(leaf as never, plugin as never);
+  view.getSessionId = vi.fn().mockReturnValue(sessionId);
+  leaf.view = view;
+  return { leaf, view };
+}
+
+function attachSessionAsLeaf(plugin: ShellPlugin, sessionId: string) {
+  const { leaf, view } = makeShellViewLeaf(plugin, sessionId);
+  vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+  return { leaf, view };
+}
+
+function setupExistingLeaf(plugin: ShellPlugin) {
+  const existing = new WorkspaceLeaf();
+  vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([existing]);
+  const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+  return { existing, reveal };
+}
+
+async function runSelfTest(): Promise<string | undefined> {
+  const plugin = makePlugin();
+  await plugin.onload();
+  const cmd = plugin.__findCommand('run-self-test');
+  await cmd?.callback?.();
+  return __getNotices().at(-1)?.message;
+}
 
 describe('ShellPlugin.loadSettings', () => {
   it('falls back to defaults when loadData returns null', async () => {
@@ -235,22 +234,14 @@ describe('ShellPlugin.isSessionAttached', () => {
   it('returns true when a ShellView leaf hosts the given id', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
-    const leaf = new WorkspaceLeaf();
-    const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue(entry.id);
-    leaf.view = view;
-    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    attachSessionAsLeaf(plugin, entry.id);
     expect(plugin.isSessionAttached(entry.id)).toBe(true);
   });
 
   it('returns false when a leaf hosts a different session', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
-    const leaf = new WorkspaceLeaf();
-    const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue('shell-99');
-    leaf.view = view;
-    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    attachSessionAsLeaf(plugin, 'shell-99');
     expect(plugin.isSessionAttached(entry.id)).toBe(false);
   });
 
@@ -275,11 +266,7 @@ describe('ShellPlugin.describeSessionState', () => {
   it('returns attached when a ShellView leaf hosts the session', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
-    const leaf = new WorkspaceLeaf();
-    const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue(entry.id);
-    leaf.view = view;
-    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    attachSessionAsLeaf(plugin, entry.id);
     expect(plugin.describeSessionState(entry)).toBe('attached');
   });
 
@@ -293,9 +280,7 @@ describe('ShellPlugin.describeSessionState', () => {
 describe('ShellPlugin.activateShellsView', () => {
   it('reveals an existing shells-view leaf', async () => {
     const plugin = makePlugin();
-    const existing = new WorkspaceLeaf();
-    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([existing]);
-    const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+    const { existing, reveal } = setupExistingLeaf(plugin);
     await plugin.activateShellsView();
     expect(reveal).toHaveBeenCalledWith(existing);
   });
@@ -384,11 +369,7 @@ describe('ShellPlugin.switchToSession', () => {
   it('reveals the existing leaf when another view already hosts the session', async () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
-    const leaf = new WorkspaceLeaf();
-    const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue(entry.id);
-    leaf.view = view;
-    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([leaf]);
+    const { leaf, view } = attachSessionAsLeaf(plugin, entry.id);
     const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
     await plugin.switchToSession(entry.id);
     expect(reveal).toHaveBeenCalledWith(leaf);
@@ -497,9 +478,7 @@ describe('ShellPlugin.killActiveShell', () => {
   it('kills the active shell when a terminal view is focused', () => {
     const plugin = makePlugin();
     const entry = plugin.createSession(80, 24);
-    const leaf = new WorkspaceLeaf();
-    const view = new ShellView(leaf as never, plugin as never);
-    view.getSessionId = vi.fn().mockReturnValue(entry.id);
+    const { view } = makeShellViewLeaf(plugin, entry.id);
     vi.spyOn(plugin.app.workspace, 'getActiveViewOfType').mockReturnValue(view);
     plugin.killActiveShell();
     expect((entry.session as unknown as FakeSession).kill).toHaveBeenCalled();
@@ -610,9 +589,7 @@ describe('ShellPlugin.onExternalSettingsChange', () => {
 describe('ShellPlugin.activateView', () => {
   it('reveals the existing leaf when one is already open', async () => {
     const plugin = makePlugin();
-    const existing = new WorkspaceLeaf();
-    vi.spyOn(plugin.app.workspace, 'getLeavesOfType').mockReturnValue([existing]);
-    const reveal = vi.spyOn(plugin.app.workspace, 'revealLeaf');
+    const { existing, reveal } = setupExistingLeaf(plugin);
     await plugin.activateView();
     expect(reveal).toHaveBeenCalledWith(existing);
   });
@@ -744,31 +721,16 @@ describe('shell commands wiring', () => {
 describe('run-self-test command', () => {
   it('shows a success notice when probePty resolves', async () => {
     mockedProbePty.mockResolvedValue('Darwin 25.4.0 arm64');
-    const plugin = makePlugin();
-    await plugin.onload();
-    const cmd = plugin.__findCommand('run-self-test');
-    await cmd?.callback?.();
-    const last = __getNotices().at(-1);
-    expect(last?.message).toBe('Self-test: Darwin 25.4.0 arm64');
+    expect(await runSelfTest()).toBe('Self-test: Darwin 25.4.0 arm64');
   });
 
   it('shows the error message when probePty rejects with an Error', async () => {
     mockedProbePty.mockRejectedValue(new Error('native binary missing'));
-    const plugin = makePlugin();
-    await plugin.onload();
-    const cmd = plugin.__findCommand('run-self-test');
-    await cmd?.callback?.();
-    const last = __getNotices().at(-1);
-    expect(last?.message).toBe('Self-test failed: native binary missing');
+    expect(await runSelfTest()).toBe('Self-test failed: native binary missing');
   });
 
   it('stringifies non-Error rejections', async () => {
     mockedProbePty.mockRejectedValue('string rejection');
-    const plugin = makePlugin();
-    await plugin.onload();
-    const cmd = plugin.__findCommand('run-self-test');
-    await cmd?.callback?.();
-    const last = __getNotices().at(-1);
-    expect(last?.message).toBe('Self-test failed: string rejection');
+    expect(await runSelfTest()).toBe('Self-test failed: string rejection');
   });
 });

@@ -1,54 +1,13 @@
-import { App, WorkspaceLeaf } from 'obsidian';
+// jscpd:ignore-start
+import { WorkspaceLeaf } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionEntry } from '../src/main';
-import ShellPlugin from '../src/main';
-import { DEFAULT_SETTINGS } from '../src/settings';
+import type ShellPlugin from '../src/main';
 import { SHELLS_VIEW_TYPE, ShellsView } from '../src/sidebar';
+import { makeSessionEntry as makeEntry, makePlugin } from './helpers/plugin';
 
-vi.mock('../src/pty', () => {
-  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
-    this.isDead = false;
-    this.kill = vi.fn();
-    this.resize = vi.fn();
-    this.attach = vi.fn();
-    this.detach = vi.fn();
-    this.write = vi.fn();
-    this.onExit = vi.fn();
-  });
-  return {
-    probePty: vi.fn(),
-    PtySession: ctor,
-  };
-});
-
-vi.mock('../src/view', () => ({
-  SHELL_VIEW_TYPE: 'obsidian-shell',
-  ShellView: class {
-    constructor(
-      public leaf: unknown,
-      public plugin: unknown,
-    ) {}
-    applySettings = vi.fn();
-    reattachSession = vi.fn();
-    attachToSession = vi.fn();
-    focusTerminal = vi.fn();
-    getSessionId = vi.fn(() => null as string | null);
-  },
-}));
-
-function makePlugin(): ShellPlugin {
-  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
-  plugin.settings = structuredClone(DEFAULT_SETTINGS);
-  return plugin;
-}
-
-function makeEntry(label: string, isDead = false): SessionEntry {
-  return {
-    id: label.toLowerCase().replace(/\s+/g, '-'),
-    label,
-    session: { isDead } as never,
-  };
-}
+vi.mock('../src/pty', async () => (await import('./helpers/mocks')).ptyMockFactory());
+vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
+// jscpd:ignore-end
 
 describe('ShellsView metadata', () => {
   it('exposes the view type, display text, and icon', () => {
@@ -93,57 +52,43 @@ describe('ShellsView.render', () => {
     expect((rows[1] as HTMLElement | undefined)?.dataset.state).toBe('exited');
   });
 
-  it('clicking a row switches to that session', () => {
+  function setupSingleRow() {
     const entry = makeEntry('Shell 1');
     vi.spyOn(plugin, 'listSessions').mockReturnValue([entry]);
     vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
     const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
     view.render();
     const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
+    return { entry, switchSpy, row };
+  }
+
+  it('clicking a row switches to that session', () => {
+    const { entry, switchSpy, row } = setupSingleRow();
     row.click();
     expect(switchSpy).toHaveBeenCalledWith(entry.id);
   });
 
   it('pressing Enter on a row switches to that session', () => {
-    const entry = makeEntry('Shell 1');
-    vi.spyOn(plugin, 'listSessions').mockReturnValue([entry]);
-    vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
-    const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
-    view.render();
-    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
+    const { entry, switchSpy, row } = setupSingleRow();
     row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(switchSpy).toHaveBeenCalledWith(entry.id);
   });
 
   it('pressing Space on a row switches to that session', () => {
-    const entry = makeEntry('Shell 1');
-    vi.spyOn(plugin, 'listSessions').mockReturnValue([entry]);
-    vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
-    const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
-    view.render();
-    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
+    const { entry, switchSpy, row } = setupSingleRow();
     row.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     expect(switchSpy).toHaveBeenCalledWith(entry.id);
   });
 
   it('ignores unrelated keys on a row', () => {
-    const entry = makeEntry('Shell 1');
-    vi.spyOn(plugin, 'listSessions').mockReturnValue([entry]);
-    vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
-    const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
-    view.render();
-    const row = view.contentEl.querySelector('.obsidian-shell-list-row') as HTMLElement;
+    const { switchSpy, row } = setupSingleRow();
     row.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
     expect(switchSpy).not.toHaveBeenCalled();
   });
 
   it('clicking the kill button kills only that session without switching', () => {
-    const entry = makeEntry('Shell 1');
-    vi.spyOn(plugin, 'listSessions').mockReturnValue([entry]);
-    vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
-    const switchSpy = vi.spyOn(plugin, 'switchToSession').mockResolvedValue();
+    const { entry, switchSpy } = setupSingleRow();
     const killSpy = vi.spyOn(plugin, 'killSession').mockReturnValue();
-    view.render();
     const killBtn = view.contentEl.querySelector('.obsidian-shell-list-kill') as HTMLButtonElement;
     killBtn.click();
     expect(killSpy).toHaveBeenCalledWith(entry.id);

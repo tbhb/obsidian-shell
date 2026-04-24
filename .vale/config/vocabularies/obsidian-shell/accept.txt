@@ -20,6 +20,7 @@ ESLint
 formatters
 gitignore[dr]?
 [Hh]usky
+jscpd
 jsdom
 [Kk]nip
 Lezer

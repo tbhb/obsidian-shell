@@ -25,6 +25,19 @@ function resolveFontFamily(el: HTMLElement, override: string): string {
   return monospace || 'monospace';
 }
 
+function buildTerminalOptions(el: HTMLElement, settings: ShellPluginSettings) {
+  const { appearance, behavior } = settings;
+  return {
+    fontFamily: resolveFontFamily(el, appearance.fontFamily),
+    fontSize: appearance.fontSize,
+    lineHeight: appearance.lineHeight,
+    cursorStyle: appearance.cursorStyle,
+    cursorBlink: appearance.cursorBlink,
+    scrollback: behavior.scrollback,
+    theme: appearance.followObsidianTheme ? resolveObsidianTheme(el) : undefined,
+  };
+}
+
 function resolveObsidianTheme(el: HTMLElement): ITheme {
   const cs = getComputedStyle(el);
   const background = cs.getPropertyValue('--background-primary').trim();
@@ -107,16 +120,8 @@ export class ShellView extends ItemView {
     this.contentEl.empty();
     this.contentEl.addClass('obsidian-shell-host');
 
-    const { appearance, behavior } = this.plugin.settings;
-
     const terminal = new Terminal({
-      fontFamily: resolveFontFamily(this.contentEl, appearance.fontFamily),
-      fontSize: appearance.fontSize,
-      lineHeight: appearance.lineHeight,
-      cursorStyle: appearance.cursorStyle,
-      cursorBlink: appearance.cursorBlink,
-      scrollback: behavior.scrollback,
-      theme: appearance.followObsidianTheme ? resolveObsidianTheme(this.contentEl) : undefined,
+      ...buildTerminalOptions(this.contentEl, this.plugin.settings),
       allowProposedApi: true,
     });
     const fitAddon = new FitAddon();
@@ -244,16 +249,7 @@ export class ShellView extends ItemView {
     if (!this.terminal) {
       return;
     }
-    const { appearance, behavior } = settings;
-    this.terminal.options = {
-      fontFamily: resolveFontFamily(this.contentEl, appearance.fontFamily),
-      fontSize: appearance.fontSize,
-      lineHeight: appearance.lineHeight,
-      cursorStyle: appearance.cursorStyle,
-      cursorBlink: appearance.cursorBlink,
-      scrollback: behavior.scrollback,
-      theme: appearance.followObsidianTheme ? resolveObsidianTheme(this.contentEl) : undefined,
-    };
+    this.terminal.options = buildTerminalOptions(this.contentEl, settings);
     this.fitAddon?.fit();
   }
 

@@ -39,6 +39,9 @@ coverage
 # dependency-cruiser: on-demand mermaid graph output
 /dependency-graph.mmd
 
+# jscpd: on-demand report output (written when reporters include html, json, etc.)
+/report/
+
 # logs
 *.log
 .pnpm-debug.log*

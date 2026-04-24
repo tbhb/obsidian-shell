@@ -1,0 +1,17 @@
+{
+  "threshold": 0,
+  "reporters": ["console"],
+  "gitignore": true,
+  "absolute": true,
+  "ignore": [
+    "**/node_modules/**",
+    "**/coverage/**",
+    "**/report/**",
+    "main.js",
+    "main.js.map",
+    "styles.css.map"
+  ],
+  "minTokens": 50,
+  "minLines": 5,
+  "mode": "mild"
+}

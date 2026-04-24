@@ -53,6 +53,9 @@ jobs:
       - name: Lint dependency graph (dependency-cruiser)
         run: pnpm run lint:deps
 
+      - name: Lint duplicate code (jscpd)
+        run: pnpm run lint:jscpd
+
       - name: Lint dead code (knip)
         run: pnpm run lint:knip
 

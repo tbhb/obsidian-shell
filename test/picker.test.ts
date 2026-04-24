@@ -1,54 +1,12 @@
-import { App } from 'obsidian';
+// jscpd:ignore-start
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionEntry } from '../src/main';
-import ShellPlugin from '../src/main';
+import type ShellPlugin from '../src/main';
 import { ShellPickerModal } from '../src/picker';
-import { DEFAULT_SETTINGS } from '../src/settings';
+import { makeSessionEntry as makeEntry, makePlugin } from './helpers/plugin';
 
-vi.mock('../src/pty', () => {
-  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
-    this.isDead = false;
-    this.kill = vi.fn();
-    this.resize = vi.fn();
-    this.attach = vi.fn();
-    this.detach = vi.fn();
-    this.write = vi.fn();
-    this.onExit = vi.fn();
-  });
-  return {
-    probePty: vi.fn(),
-    PtySession: ctor,
-  };
-});
-
-vi.mock('../src/view', () => ({
-  SHELL_VIEW_TYPE: 'obsidian-shell',
-  ShellView: class {
-    constructor(
-      public leaf: unknown,
-      public plugin: unknown,
-    ) {}
-    applySettings = vi.fn();
-    reattachSession = vi.fn();
-    attachToSession = vi.fn();
-    focusTerminal = vi.fn();
-    getSessionId = vi.fn(() => null as string | null);
-  },
-}));
-
-function makePlugin(): ShellPlugin {
-  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
-  plugin.settings = structuredClone(DEFAULT_SETTINGS);
-  return plugin;
-}
-
-function makeEntry(label: string, isDead = false): SessionEntry {
-  return {
-    id: label.toLowerCase().replace(/\s+/g, '-'),
-    label,
-    session: { isDead } as never,
-  };
-}
+vi.mock('../src/pty', async () => (await import('./helpers/mocks')).ptyMockFactory());
+vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
+// jscpd:ignore-end
 
 describe('ShellPickerModal', () => {
   let plugin: ShellPlugin;

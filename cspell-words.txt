@@ -16,6 +16,7 @@ gitignored
 husky
 Inconsolata
 Iosevka
+jscpd
 jsdom
 Kahneman
 Keymap

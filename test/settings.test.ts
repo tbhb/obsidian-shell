@@ -1,7 +1,7 @@
+// jscpd:ignore-start
 import {
   __getSettings,
   __resetObsidianMocks,
-  App,
   type DropdownComponent,
   type Setting,
   type SliderComponent,
@@ -9,40 +9,18 @@ import {
   type ToggleComponent,
 } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ShellPlugin from '../src/main';
+import type ShellPlugin from '../src/main';
 import {
   DEFAULT_SETTINGS,
   detectMonospaceFonts,
   mergeSettings,
   ShellSettingTab,
 } from '../src/settings';
+import { makePlugin } from './helpers/plugin';
 
-vi.mock('../src/pty', () => {
-  const ctor = vi.fn(function ctorImpl(this: Record<string, unknown>) {
-    this.isDead = false;
-    this.kill = vi.fn();
-    this.resize = vi.fn();
-    this.attach = vi.fn();
-    this.detach = vi.fn();
-    this.write = vi.fn();
-    this.onExit = vi.fn();
-  });
-  return {
-    probePty: vi.fn(),
-    PtySession: ctor,
-  };
-});
-
-vi.mock('../src/view', () => ({
-  SHELL_VIEW_TYPE: 'obsidian-shell',
-  ShellView: class {
-    constructor(
-      public leaf: unknown,
-      public plugin: unknown,
-    ) {}
-    applySettings(): void {}
-  },
-}));
+vi.mock('../src/pty', async () => (await import('./helpers/mocks')).ptyMockFactory());
+vi.mock('../src/view', async () => (await import('./helpers/mocks')).viewMockFactory());
+// jscpd:ignore-end
 
 describe('mergeSettings', () => {
   it('returns defaults when stored data is null', () => {
@@ -117,8 +95,7 @@ describe('ShellSettingTab.display', () => {
 
   beforeEach(() => {
     __resetObsidianMocks();
-    plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
-    plugin.settings = structuredClone(DEFAULT_SETTINGS);
+    plugin = makePlugin();
     plugin.saveData = vi.fn();
     tab = new ShellSettingTab(plugin.app, plugin);
   });
