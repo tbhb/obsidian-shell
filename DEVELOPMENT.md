@@ -50,7 +50,7 @@ Before the first run, sync Vale's style packages:
 pnpm vale:sync
 ```
 
-That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/obsidian-shell/` and the vocabulary under `.vale/config/vocabularies/obsidian-shell/` stay committed.
+That downloads Google, write-good, proselint, and the AI-tells packages into `.vale/`. The downloads go into gitignored subdirectories. The project-specific style under `.vale/shell/` and the vocabulary under `.vale/config/vocabularies/shell/` stay committed.
 
 ## Scripts
 
@@ -174,7 +174,7 @@ Each `lint:*` script runs a single tool. Check `package.json` for the full list.
 - **Biome complains about formatting.** Run `pnpm format`. Biome handles indentation, quote style, trailing commas, and import sort automatically.
 - **ESLint flags an Obsidian rule.** Read the rule name, then jump to `eslint-plugin-obsidianmd` docs. Common ones: sentence-case UI strings, no `innerHTML`, no plugin name inside a command label.
 - **rumdl reports `MD040` missing language.** Add a language hint after the opening triple backticks. Use `text` for plain output.
-- **vale reports unknown words.** Add the term to `.vale/config/vocabularies/obsidian-shell/accept.txt`. The file accepts one regular expression per line.
+- **vale reports unknown words.** Add the term to `.vale/config/vocabularies/shell/accept.txt`. The file accepts one regular expression per line.
 - **cspell reports unknown words.** Add them to `cspell-words.txt`, one per line.
 - **yamllint reports a long line.** Break the value across lines with a folded scalar, or add `# yamllint disable-line rule:line-length` at the end of the line.
 - **actionlint reports a shellcheck issue.** Most of these flag unquoted variables. Fix them in place.
@@ -300,7 +300,7 @@ Run `pnpm run prepare` to regenerate the `.husky/_` wrapper directory.
 
 ### `vale` complains about unknown words
 
-Extend `.vale/config/vocabularies/obsidian-shell/accept.txt`. That file takes one regular expression per line. Prefer spelling out proper names in full and reach for a broad pattern like `[A-Z]{2,}` only as a last resort.
+Extend `.vale/config/vocabularies/shell/accept.txt`. That file takes one regular expression per line. Prefer spelling out proper names in full and reach for a broad pattern like `[A-Z]{2,}` only as a last resort.
 
 ### CI fails on a rumdl rule for `CHANGELOG.md`
 

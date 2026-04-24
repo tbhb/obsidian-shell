@@ -159,7 +159,7 @@ Every markdown, YAML, and workflow file ships through a gate before landing:
 - `yamllint` for YAML
 - `actionlint` for GitHub Actions workflows
 
-Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/obsidian-shell/accept.txt` when Vale flags them as spelling errors. Avoid em-dashes entirely, use commas or periods. Vale flags long parentheticals over 25 characters, so break them into separate sentences. Write each paragraph on a single line without hard wrapping. Use reference-style links with definitions at the bottom of their containing paragraph or section.
+Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/shell/accept.txt` when Vale flags them as spelling errors. Avoid em-dashes entirely, use commas or periods. Vale flags long parentheticals over 25 characters, so break them into separate sentences. Write each paragraph on a single line without hard wrapping. Use reference-style links with definitions at the bottom of their containing paragraph or section.
 
 ## Git workflow
 
@@ -193,7 +193,7 @@ Add new technical terms to `cspell-words.txt` and to `.vale/config/vocabularies/
 - Register listeners and intervals via `this.registerDomEvent()` and `this.registerInterval()` so they unload with the plugin.
 - Gate desktop-only features behind `Platform.isMobile` checks.
 - Use `createEl`, `createDiv`, and `createSpan` helpers. Never set `innerHTML`.
-- The plugin id `obsidian-shell` must match the folder name under `.obsidian/plugins/` for local development.
+- The plugin id `shell` must match the folder name under `.obsidian/plugins/` for local development.
 - `src/pty.ts` statically imports `node-pty`. Vite bundles node-pty's JS wrapper into `main.js`, and a rollup transform in `vite.config.ts` rewrites node-pty's `loadNativeModule` helper to resolve a flat `pty-<platform>-<arch>.node` sibling of `main.js` at runtime, with a fallback to `node_modules/node-pty/build/Release/pty.node` for local development.
 - Run `pnpm rebuild:native` any time `node-pty` updates or the pinned Electron version changes. The rebuilt binary lands at `node_modules/node-pty/build/Release/pty.node` and the dev fallback path picks it up automatically.
 - Obsidian doesn't guarantee `view.setState` fires before `onOpen` on newly created leaves. `ShellView.onOpen` seeds `sessionId` from `leaf.getViewState().state` before `bindSession` runs, and `setState` discards any placeholder session `bindSession` spawned when it arrives post-open with a different id. Preserve that ordering when editing the view.

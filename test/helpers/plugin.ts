@@ -4,7 +4,7 @@ import ShellPlugin from '../../src/main';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 
 export function makePlugin(): ShellPlugin {
-  const plugin = new ShellPlugin(new App() as never, { id: 'obsidian-shell' } as never);
+  const plugin = new ShellPlugin(new App() as never, { id: 'shell' } as never);
   plugin.settings = structuredClone(DEFAULT_SETTINGS);
   return plugin;
 }

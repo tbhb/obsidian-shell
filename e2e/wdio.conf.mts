@@ -26,7 +26,7 @@ export const config: WebdriverIO.Config = {
   ],
   services: ['obsidian'],
   reporters: ['obsidian'],
-  cacheDir: path.join(homedir(), '.cache', 'obsidian-shell-e2e', 'wdio'),
+  cacheDir: path.join(homedir(), '.cache', 'shell-e2e', 'wdio'),
   mochaOpts: {
     ui: 'bdd',
     timeout: 120000,

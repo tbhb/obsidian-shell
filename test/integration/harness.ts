@@ -5,13 +5,13 @@ import type ShellPlugin from '../../src/main';
 import { copyFixtureToTmp, type VaultFixture } from './fixture';
 
 const MANIFEST: PluginManifest = {
-  id: 'obsidian-shell',
+  id: 'shell',
   name: 'Shell',
   version: '0.0.0-test',
   minAppVersion: '1.7.2',
 };
 
-export const DATA_JSON = '.obsidian/plugins/obsidian-shell/data.json';
+export const DATA_JSON = '.obsidian/plugins/shell/data.json';
 
 type ShellPluginCtor = new (app: never, manifest: never) => ShellPlugin;
 

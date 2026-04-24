@@ -18,7 +18,7 @@ async function stageNativesAndEnable(): Promise<void> {
     // biome-ignore lint/suspicious/noExplicitAny: Obsidian runtime global
     return (globalThis as any).app.vault.adapter.basePath;
   });
-  const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-shell');
+  const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'shell');
   const ptySrc = path.join(NATIVE_SRC, 'pty.node');
   const helperSrc = path.join(NATIVE_SRC, 'spawn-helper');
   if (!existsSync(ptySrc)) {
@@ -30,7 +30,7 @@ async function stageNativesAndEnable(): Promise<void> {
     copyFileSync(helperSrc, helperDst);
     chmodSync(helperDst, 0o755);
   }
-  await obsidianPage.enablePlugin('obsidian-shell');
+  await obsidianPage.enablePlugin('shell');
 }
 
 // TODO(e2e-PTY): Un-skip once node-pty works under wdio-obsidian-service's
@@ -42,7 +42,7 @@ async function stageNativesAndEnable(): Promise<void> {
 //   - `stageNativesAndEnable()` drops `pty-<platform>-<arch>.node` and
 //     `spawn-helper-<platform>-<arch>` into the installed plugin dir with
 //     755 mode, then flips the plugin on.
-//   - `browser.executeObsidianCommand('obsidian-shell:run-self-test')`
+//   - `browser.executeObsidianCommand('shell:run-self-test')`
 //     dispatches cleanly and the Notice DOM element renders with text.
 //
 // The `nodePty.spawn()` call inside `probePty` fails with the catch-all
@@ -62,14 +62,14 @@ async function stageNativesAndEnable(): Promise<void> {
 //
 // Every other part of the harness works. Swap `describe.skip`
 // back to `describe` and it should pass once the underlying blocker lifts.
-describe.skip('obsidian-shell plugin loads end-to-end', () => {
+describe.skip('shell plugin loads end-to-end', () => {
   before(async () => {
     await browser.reloadObsidian();
     await stageNativesAndEnable();
   });
 
   it('Shell: Run self-test returns platform info in a Notice', async () => {
-    await browser.executeObsidianCommand('obsidian-shell:run-self-test');
+    await browser.executeObsidianCommand('shell:run-self-test');
 
     let captured = '';
     await browser.waitUntil(

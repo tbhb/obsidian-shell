@@ -21,7 +21,7 @@ export interface VaultFixture {
 }
 
 export function copyFixtureToTmp(): VaultFixture {
-  const dir = mkdtempSync(join(tmpdir(), 'obsidian-shell-vault-'));
+  const dir = mkdtempSync(join(tmpdir(), 'shell-vault-'));
   cpSync(FIXTURE_ROOT, dir, { recursive: true });
   return {
     path: dir,

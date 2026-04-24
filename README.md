@@ -1,4 +1,4 @@
-# obsidian-shell
+# Shell
 
 An desktop-only, embedded terminal for [Obsidian][obsidian], powered by [xterm.js][xtermjs] and [node-pty][node-pty].
 
@@ -38,7 +38,7 @@ Obsidian's community catalog and [BRAT] only deliver `main.js`, `manifest.json`,
 
 ### Manual install
 
-Grab the latest [release][releases] and copy these assets into `.obsidian/plugins/obsidian-shell/`, creating the folder first if it doesn't exist:
+Grab the latest [release][releases] and copy these assets into `.obsidian/plugins/shell/`, creating the folder first if it doesn't exist:
 
 - `main.js`
 - `manifest.json`
@@ -50,7 +50,7 @@ Grab the latest [release][releases] and copy these assets into `.obsidian/plugin
 On macOS, mark the `spawn-helper` executable:
 
 ```bash
-chmod +x .obsidian/plugins/obsidian-shell/spawn-helper-*
+chmod +x .obsidian/plugins/shell/spawn-helper-*
 ```
 
 Restart Obsidian or toggle community plugins off and on, then enable `Shell` under **Settings → Community plugins**. The first enable opens a starter shell.
