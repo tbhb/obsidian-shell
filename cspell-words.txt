@@ -4,6 +4,7 @@ autoupdate
 biomejs
 Cascadia
 collab
+commitlintrc
 conpty
 Consolas
 cooldown

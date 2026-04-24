@@ -30,6 +30,8 @@ dev
 errno
 [Cc]onfigs?
 cspell
+dependabot
+devDependency
 ESLint
 eslint-disable
 eslint-disable-next-line

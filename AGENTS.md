@@ -62,7 +62,7 @@ manifest.json               # Obsidian plugin manifest
 versions.json               # plugin version -> minAppVersion map
 ```
 
-Config lives at the repo root: `biome.json`, `eslint.config.mts`, `.dependency-cruiser.cjs`, `.jscpd.json`, `.knip.json`, `cspell.json` + `cspell-words.txt`, `.rumdl.toml`, `.vale.ini` + `.vale/`, `.yamllint.yaml` + `.yamllintignore`, `commitlint.config.js`, `vite.config.ts`, `vitest.config.ts`, and `tsconfig.json`.
+Config lives at the repo root: `biome.json`, `eslint.config.mts`, `.dependency-cruiser.cjs`, `.jscpd.json`, `.knip.json`, `cspell.json` + `cspell-words.txt`, `.rumdl.toml`, `.vale.ini` + `.vale/`, `.yamllint.yaml` + `.yamllintignore`, `.commitlintrc.ts`, `vite.config.ts`, `vitest.config.ts`, and `tsconfig.json`.
 
 ## Commands reference
 

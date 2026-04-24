@@ -25,5 +25,12 @@
       "obsidian": ["./test/__mocks__/obsidian.ts"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "eslint.config.mts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    ".commitlintrc.ts"
+  ]
 }

@@ -14,11 +14,19 @@
  * no-non-null-assertion, no-ts-ignore). See `biome.json`.
  */
 
-import { globalIgnores } from 'eslint/config';
+import type { Linter } from 'eslint';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+
+// `obsidianmd.configs.recommended` is a hybrid: its own properties are the
+// rules map, while `Symbol.iterator` yields a multi-entry flat config that
+// also pulls in `tseslint.configs.recommendedTypeChecked`, sdl, import, and
+// depend. We configure tseslint ourselves and haven't vetted the other
+// plugins, so narrow to the rules map before spreading.
+const obsidianRecommendedRules = (obsidianmd.configs?.['recommended'] ?? {}) as Linter.RulesRecord;
 
 const typeAwareRules = {
   '@typescript-eslint/no-unsafe-assignment': 'error',
@@ -38,7 +46,7 @@ const typeAwareRules = {
   '@typescript-eslint/no-explicit-any': 'off',
 } as const;
 
-export default tseslint.config(
+export default defineConfig(
   {
     files: ['src/**/*.ts'],
     languageOptions: {
@@ -48,13 +56,7 @@ export default tseslint.config(
       },
       parserOptions: {
         projectService: {
-          allowDefaultProject: [
-            'eslint.config.mts',
-            'vite.config.ts',
-            'vitest.config.ts',
-            'commitlint.config.js',
-            'manifest.json',
-          ],
+          allowDefaultProject: ['manifest.json'],
         },
         tsconfigRootDir: import.meta.dirname,
         extraFileExtensions: ['.json'],
@@ -69,11 +71,10 @@ export default tseslint.config(
       ...typeAwareRules,
     },
   },
-  // Root-level config files. These aren't part of tsconfig.json's `include`,
-  // so they fall through `allowDefaultProject` above. They run in Node, not
-  // the browser, and have no reason to use `obsidianmd` rules.
+  // Root-level config files run in Node, not the browser, and have no reason
+  // to use `obsidianmd` rules. All three sit in tsconfig's `include`.
   {
-    files: ['vite.config.ts', 'vitest.config.ts', 'commitlint.config.js'],
+    files: ['vite.config.ts', 'vitest.config.ts', '.commitlintrc.ts'],
     languageOptions: {
       parser: tseslint.parser,
       globals: {
@@ -81,13 +82,7 @@ export default tseslint.config(
       },
       parserOptions: {
         projectService: {
-          allowDefaultProject: [
-            'eslint.config.mts',
-            'vite.config.ts',
-            'vitest.config.ts',
-            'commitlint.config.js',
-            'manifest.json',
-          ],
+          allowDefaultProject: ['manifest.json'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -135,14 +130,12 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
-  // Apply the Obsidian submission rules to plugin source and tests. The
-  // recommended preset doubles as a plain rules map, so apply it directly
-  // instead of spreading the multi-layer flat-config array the plugin also
-  // exposes.
+  // Apply the Obsidian submission rules to plugin source and tests.
+  // `obsidianRecommendedRules` is narrowed above.
   {
     files: ['src/**/*.ts', 'test/**/*.ts'],
     plugins: { obsidianmd },
-    rules: { ...obsidianmd.configs.recommended },
+    rules: { ...obsidianRecommendedRules },
   },
   // `hardcoded-config-path` substring-matches `.obsidian` and fires on docs
   // URLs (`docs.obsidian.md/...`). That's a false positive in tests that
