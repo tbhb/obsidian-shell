@@ -71,9 +71,7 @@ describe('ShellsView.render', () => {
     vi.spyOn(plugin, 'listSessions').mockReturnValue([makeEntry('Shell 7')]);
     vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
     view.render();
-    const killBtn = view.contentEl.querySelector(
-      '.obsidian-shell-list-kill',
-    ) as HTMLButtonElement | null;
+    const killBtn = view.contentEl.querySelector<HTMLButtonElement>('.obsidian-shell-list-kill');
     expect(killBtn?.getAttribute('aria-label')).toBe('Kill Shell 7');
     expect(killBtn?.dataset['icon']).toBe('x');
   });
