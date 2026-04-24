@@ -45,11 +45,37 @@ describe('ShellsView.render', () => {
       entry.session.isDead ? 'exited' : 'detached',
     );
     view.render();
+    const listRoot = view.contentEl.querySelector('.obsidian-shell-list-items');
+    expect(listRoot).not.toBeNull();
     const rows = view.contentEl.querySelectorAll('.obsidian-shell-list-row');
     expect(rows).toHaveLength(2);
     expect(rows[0]?.querySelector('.obsidian-shell-list-label')?.textContent).toBe('Shell 1');
     expect((rows[0] as HTMLElement | undefined)?.dataset['state']).toBe('detached');
     expect((rows[1] as HTMLElement | undefined)?.dataset['state']).toBe('exited');
+    expect(rows[0]?.getAttribute('role')).toBe('button');
+    expect(rows[0]?.getAttribute('tabindex')).toBe('0');
+    expect(rows[0]?.querySelector('.obsidian-shell-list-state')?.textContent).toBe('detached');
+    expect(rows[1]?.querySelector('.obsidian-shell-list-state')?.textContent).toBe('exited');
+    expect(rows[0]?.querySelector('.obsidian-shell-list-actions')).not.toBeNull();
+  });
+
+  it('renders the attached state label when the plugin reports attached', () => {
+    vi.spyOn(plugin, 'listSessions').mockReturnValue([makeEntry('Shell 1')]);
+    vi.spyOn(plugin, 'describeSessionState').mockReturnValue('attached');
+    view.render();
+    const badge = view.contentEl.querySelector('.obsidian-shell-list-state');
+    expect(badge?.textContent).toBe('attached');
+  });
+
+  it('labels the kill button with the session label and stamps an x icon', () => {
+    vi.spyOn(plugin, 'listSessions').mockReturnValue([makeEntry('Shell 7')]);
+    vi.spyOn(plugin, 'describeSessionState').mockReturnValue('detached');
+    view.render();
+    const killBtn = view.contentEl.querySelector(
+      '.obsidian-shell-list-kill',
+    ) as HTMLButtonElement | null;
+    expect(killBtn?.getAttribute('aria-label')).toBe('Kill Shell 7');
+    expect(killBtn?.dataset['icon']).toBe('x');
   });
 
   function setupSingleRow() {

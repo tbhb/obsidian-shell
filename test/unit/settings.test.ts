@@ -22,6 +22,27 @@ vi.mock('../../src/pty', async () => (await import('../helpers/mocks')).ptyMockF
 vi.mock('../../src/view', async () => (await import('../helpers/mocks')).viewMockFactory());
 // jscpd:ignore-end
 
+describe('DEFAULT_SETTINGS', () => {
+  it('matches the shipped defaults exactly', () => {
+    expect(DEFAULT_SETTINGS).toEqual({
+      shell: { path: '', args: ['-l'] },
+      cwd: { strategy: 'vault-root', fixedPath: '' },
+      appearance: {
+        fontFamily: '',
+        fontSize: 13,
+        lineHeight: 1.2,
+        cursorStyle: 'block',
+        cursorBlink: true,
+        followObsidianTheme: true,
+      },
+      behavior: {
+        scrollback: 2000,
+        copyOnSelection: false,
+      },
+    });
+  });
+});
+
 describe('mergeSettings', () => {
   it('returns defaults when stored data is null', () => {
     expect(mergeSettings(null)).toEqual(DEFAULT_SETTINGS);
@@ -86,6 +107,31 @@ describe('detectMonospaceFonts', () => {
       check: vi.fn((spec: string) => Array.from(accept).some((f) => spec.includes(`"${f}"`))),
     } as unknown as FontFaceSet;
     expect(detectMonospaceFonts(fake)).toEqual(['Menlo', 'Monaco']);
+  });
+
+  it('returns the full candidate list when check passes for every candidate', () => {
+    const fake = { check: vi.fn(() => true) } as unknown as FontFaceSet;
+    expect(detectMonospaceFonts(fake)).toEqual([
+      'Menlo',
+      'Monaco',
+      'SF Mono',
+      'Courier New',
+      'Consolas',
+      'Cascadia Code',
+      'Cascadia Mono',
+      'JetBrains Mono',
+      'Fira Code',
+      'Fira Mono',
+      'Source Code Pro',
+      'IBM Plex Mono',
+      'Ubuntu Mono',
+      'Hack',
+      'Inconsolata',
+      'Roboto Mono',
+      'Iosevka',
+      'DejaVu Sans Mono',
+      'Liberation Mono',
+    ]);
   });
 });
 
@@ -154,6 +200,13 @@ describe('ShellSettingTab.display', () => {
     expect(plugin.settings.shell.args).toEqual(['-l', '-i']);
   });
 
+  it('shell arguments onChange splits on tabs and newlines, not just spaces', async () => {
+    tab.display();
+    const text = findSetting('Shell arguments').components[0] as TextComponent;
+    await text.__trigger('-l\t-i\n-c');
+    expect(plugin.settings.shell.args).toEqual(['-l', '-i', '-c']);
+  });
+
   it('shell arguments onChange produces an empty array for blank input', async () => {
     tab.display();
     const text = findSetting('Shell arguments').components[0] as TextComponent;
@@ -191,7 +244,9 @@ describe('ShellSettingTab.display', () => {
   it('font family dropdown picks a detected font', async () => {
     stubDocumentFonts((spec) => spec.includes('"Menlo"'));
     tab.display();
+    expect(currentSettings().some((s) => s.name === 'Custom font family')).toBe(false);
     const dropdown = findSetting('Font family').components[0] as DropdownComponent;
+    expect(dropdown.options).toHaveProperty('Menlo');
     await dropdown.__trigger('Menlo');
     expect(plugin.settings.appearance.fontFamily).toBe('Menlo');
     expect(currentSettings().some((s) => s.name === 'Custom font family')).toBe(false);
@@ -202,6 +257,7 @@ describe('ShellSettingTab.display', () => {
     tab.display();
     const dropdown = findSetting('Font family').components[0] as DropdownComponent;
     await dropdown.__trigger('__custom__');
+    expect(plugin.settings.appearance.fontFamily).toBe('');
     expect(currentSettings().some((s) => s.name === 'Custom font family')).toBe(true);
   });
 
