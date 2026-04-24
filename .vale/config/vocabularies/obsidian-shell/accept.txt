@@ -30,6 +30,8 @@ dev
 errno
 [Cc]onfigs?
 cspell
+[Dd]anger
+[Dd]angerfile
 dependabot
 devDependency
 ESLint
@@ -43,6 +45,7 @@ formatters
 FuzzySuggestModal
 getItems
 gitignore[dr]?
+[Gg]lobals
 GPUs
 HTMLElement
 [Hh]usky
