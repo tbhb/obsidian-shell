@@ -105,11 +105,14 @@ spawn
 Spawn
 src
 starship
+structuredClone
 subcommand
 substring
 subtree
 Tailwind
 tmpdir
+[Tt]oEqual
+[Tt]oStrictEqual
 toolchain
 tsc
 [Tt]sconfigs?

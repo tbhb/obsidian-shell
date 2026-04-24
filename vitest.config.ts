@@ -3,6 +3,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Three tiers share the `obsidian` alias but split by directory.
+    // `unit` exercises source modules in isolation against the in-memory
+    // mock. `integration` drives plugin code against a real on-disk vault
+    // fixture copied to a tmpdir per test. `property` runs fast-check
+    // properties over pure logic and doesn't need a DOM.
     projects: [
       {
         extends: true,
@@ -22,6 +27,14 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['test/integration/**/*.test.ts'],
           setupFiles: ['test/integration/setup.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'property',
+          environment: 'node',
+          include: ['test/property/**/*.test.ts'],
         },
       },
     ],

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. The plugin embeds a terminal inside [Obsidian][obsidian] via [xterm.js][xtermjs] and [node-pty][node-pty], and builds with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [Biome 2][biome], [dependency-cruiser][depcruise], [jscpd][jscpd], [Knip 6][knip], [TypeScript][typescript], and [pnpm][pnpm].
+Guidance for AI coding agents working in this repository. The plugin embeds a terminal inside [Obsidian][obsidian] via [xterm.js][xtermjs] and [node-pty][node-pty], and builds with [Vite 8][vite] ([Rolldown][rolldown]), [Tailwind CSS 4][tailwind], [Vitest 4][vitest], [Testing Library][testing-library], [fast-check][fast-check], [Biome 2][biome], [dependency-cruiser][depcruise], [jscpd][jscpd], [Knip 6][knip], [TypeScript][typescript], and [pnpm][pnpm].
 
 [obsidian]: https://obsidian.md/
 [xtermjs]: https://xtermjs.org/
@@ -10,6 +10,7 @@ Guidance for AI coding agents working in this repository. The plugin embeds a te
 [tailwind]: https://tailwindcss.com/
 [vitest]: https://vitest.dev/
 [testing-library]: https://testing-library.com/
+[fast-check]: https://fast-check.dev/
 [biome]: https://biomejs.dev/
 [depcruise]: https://github.com/sverweij/dependency-cruiser
 [jscpd]: https://github.com/kucherenko/jscpd
@@ -50,8 +51,12 @@ src/
 └── styles.css              # Tailwind entry + @theme inline block
 test/
 ├── __mocks__/obsidian.ts   # runtime stub; the obsidian package ships types only
-├── setup.ts                # jsdom polyfills + jest-dom matchers
-└── *.test.ts               # one test file per coverage-tracked source module
+├── fixtures/               # shared on-disk vault fixtures
+├── helpers/                # shared mocks + plugin factories
+├── setup-dom.ts            # jsdom polyfills + jest-dom matchers
+├── unit/                   # unit tests against the mock; one file per coverage-tracked source module
+├── integration/            # integration tests against a real on-disk vault fixture
+└── property/               # fast-check property tests over pure logic
 .github/
 ├── workflows/ci.yml        # Lint, Build, Test, Documentation jobs
 ├── workflows/release.yml   # release-please + build + attest + upload
@@ -70,9 +75,12 @@ Config lives at the repo root: `biome.json`, `eslint.config.mts`, `.dependency-c
 pnpm dev              # vite build --watch
 pnpm build            # tsc --noEmit + vite build
 pnpm rebuild:native   # compile node-pty against Electron 39 headers
-pnpm test             # vitest run
+pnpm test             # vitest run, all projects
 pnpm test:watch       # vitest in watch mode
-pnpm test:coverage    # vitest run --coverage, enforces 100% thresholds
+pnpm test:unit        # vitest run --project=unit
+pnpm test:integration # vitest run --project=integration
+pnpm test:property    # vitest run --project=property
+pnpm test:coverage    # vitest run --project=unit --coverage, enforces 100% thresholds
 pnpm typecheck        # tsc --noEmit on the single root tsconfig
 pnpm format           # biome format --write
 pnpm format:markdown  # rumdl fmt .
@@ -96,7 +104,7 @@ pnpm vale:sync        # download vale style packages
 - `eslint-plugin-obsidianmd` handles Obsidian submission rules: sentence-case UI strings, no `innerHTML`, no `TFile` casts, no `mod-cta` misuse, and no plugin name inside a command label. ESLint runs on `src/**/*.ts` and `test/**/*.ts`, with type-aware rules covering both trees and `obsidianmd` rules scoped to `src/` only.
 - `eslint-plugin-sonarjs` contributes `sonarjs/cognitive-complexity` at the default threshold of 15. Prefer extracting helper functions over raising the threshold.
 - [dependency-cruiser][depcruise] guards the module graph via `.dependency-cruiser.cjs`. It forbids runtime circular dependencies, orphan modules, unresolvable imports, dev-dependency imports from `src/`, duplicate dependency-type declarations, and `src/` depending on `test/`. Cycles composed only of `import type` edges pass, since those edges vanish after tsc emits. The rule exempts `obsidian` and `tslib` from the dev-dep check: the Obsidian host supplies `obsidian` at runtime, and the TypeScript compiler injects `tslib` helpers.
-- [Knip][knip] catches unused files, exports, and dependencies via `.knip.json`. The Vite and Vitest plugins auto-discover entries from `vite.config.ts` and `vitest.config.ts`, so the config only declares the project glob plus a couple of escape hatches. `tailwindcss` sits in `ignoreDependencies` because `src/styles.css` imports it via `@import`, which knip doesn't scan. Packages that only `e2e/` needs sit there too, since knip's project glob covers `src/` and `test/` only. External binaries called from npm scripts sit in `ignoreBinaries` so knip skips them; the list covers `actionlint`, `rumdl`, `vale`, and `yamllint`.
+- [Knip][knip] catches unused files, exports, and dependencies via `.knip.json`. The Vite and Vitest plugins auto-discover entries from `vite.config.ts` and `vitest.config.ts`, so the config only declares the project glob plus a couple of escape hatches. `tailwindcss` sits in `ignoreDependencies` because `src/styles.css` imports it via `@import`, which knip doesn't scan. `fast-check` sits in `ignoreDependencies` too because property tests import `fc` through `@fast-check/vitest`, which declares `fast-check` as a peer dependency, so no file imports the package directly. Packages that only `e2e/` needs sit there as well, since knip's project glob covers `src/` and `test/` only. External binaries called from npm scripts sit in `ignoreBinaries` so knip skips them; the list covers `actionlint`, `rumdl`, `vale`, and `yamllint`.
 - [jscpd][jscpd] detects copy-paste duplication across `src/` and `test/` via `.jscpd.json`. The config sets `threshold: 0` so any clone fails the lint, honors `.gitignore`, and uses the default `mode: mild` with `minTokens: 50` and `minLines: 5`. Prefer extracting a shared helper or fixture over silencing a clone. The on-demand `html` reporter writes to `./report/`, which `.gitignore` excludes.
 - Strict TypeScript with ES2022 target, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, and `isolatedModules`. A single `tsconfig.json` covers both `src/` and `test/`, with `paths` aliasing `obsidian` to the mock so test code and source share the same API surface at typecheck time.
 - Avoid default exports except the plugin entry at `src/main.ts`.
@@ -111,13 +119,16 @@ pnpm vale:sync        # download vale style packages
 
 ## Testing
 
-- [Vitest 4][vitest] with `jsdom`.
-- Coverage thresholds sit at 100% for statements, branches, functions, and lines. Don't lower the thresholds or add `/* v8 ignore */` comments without a clear rationale.
+- [Vitest 4][vitest] with `jsdom` for the `unit` and `integration` projects, and a plain `node` environment for the `property` project. Projects split by directory under `test/` so each tier stands alongside the others as a peer.
+- Coverage thresholds sit at 100% for statements, branches, functions, and lines on the `unit` project. `pnpm test:coverage` scopes collection to that project alone. `integration` and `property` don't chase branch coverage. Don't lower the thresholds or add `/* v8 ignore */` comments without a clear rationale.
 - `vitest.config.ts` excludes `src/pty.ts` and `src/view.ts`. xterm.js needs a real canvas or WebGL renderer, and node-pty needs a compiled native binary. Exercise those modules end-to-end inside Obsidian.
 - The `obsidian` npm package ships types only. Tests resolve `obsidian` to `test/__mocks__/obsidian.ts` via the alias in `vitest.config.ts`. Extend the mock when new Obsidian API surface lands in source code.
 - Tests that import `../src/main` transitively pull in `../src/view`, which pulls in `@xterm/xterm`. Stub `../src/view` with `vi.mock` so xterm never touches the jsdom DOM during tests.
 - Stub `PtySession` from `../src/pty` as a `vi.fn()` constructor that stamps `isDead`, `attach`, `detach`, `write`, `resize`, `kill`, and `onExit` onto each instance. The plugin side of the session lifecycle gets full coverage through the stub.
 - Settings-tab tests bypass Testing Library because the mocked `Setting` API can't render real form controls. They drive captured `onChange` callbacks directly via the mock's `__trigger()` helpers.
+- Property tests use [fast-check][fast-check] via [`@fast-check/vitest`][fast-check-vitest], which exposes `test.prop` and `it.prop` helpers. The default seed policy stays in place. fast-check prints the seed on failure, so reproducing a counterexample takes a single rerun with the printed seed. Save new property suites under `test/property/` rather than the unit tier so coverage metrics stay tied to deterministic unit cases.
+
+[fast-check-vitest]: https://github.com/dubzzz/fast-check/tree/main/packages/vitest
 
 ## Documentation linting
 
