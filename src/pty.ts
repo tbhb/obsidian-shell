@@ -19,7 +19,7 @@ function initNative(plugin: Plugin): void {
 function getPluginDir(plugin: Plugin): string {
   const adapter = plugin.app.vault['adapter'];
   if (typeof adapter.getFullPath !== 'function') {
-    throw new Error('obsidian-shell requires a filesystem vault');
+    throw new Error('shell requires a filesystem vault');
   }
   const relDir = plugin.manifest.dir ?? `.obsidian/plugins/${plugin.manifest.id}`;
   return adapter.getFullPath(relDir);
@@ -28,7 +28,7 @@ function getPluginDir(plugin: Plugin): string {
 function getVaultPath(plugin: Plugin): string {
   const adapter = plugin.app.vault['adapter'];
   if (typeof adapter.getBasePath !== 'function') {
-    throw new Error('obsidian-shell requires a filesystem vault');
+    throw new Error('shell requires a filesystem vault');
   }
   return adapter.getBasePath();
 }

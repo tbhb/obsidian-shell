@@ -37,14 +37,14 @@ describe('integration smoke', () => {
   });
 
   it('ships plugin manifest and data.json under .obsidian/plugins', () => {
-    const pluginDir = join(fixture.path, '.obsidian/plugins/obsidian-shell');
+    const pluginDir = join(fixture.path, '.obsidian/plugins/shell');
     const manifest = JSON.parse(readFileSync(join(pluginDir, 'manifest.json'), 'utf8')) as {
       id: string;
     };
     const data = JSON.parse(readFileSync(join(pluginDir, 'data.json'), 'utf8')) as {
       appearance: { fontSize: number };
     };
-    expect(manifest.id).toBe('obsidian-shell');
+    expect(manifest.id).toBe('shell');
     expect(data.appearance.fontSize).toBe(16);
   });
 });
